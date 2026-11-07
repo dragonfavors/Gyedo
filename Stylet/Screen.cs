@@ -1,6 +1,5 @@
 ﻿using Stylet.Logging;
 using System;
-using System.Diagnostics.CodeAnalysis;
 using System.Threading.Tasks;
 using System.Windows;
 
@@ -52,28 +51,12 @@ public class Screen : ValidatingModelBase, IScreen
     /// <summary>
     /// Gets or sets the current state of the Screen
     /// </summary>
-    [Obsolete("State is deprecated, please use ScreenState instead")]
-    public virtual ScreenState State
-    {
-        get => this.ScreenState;
-        protected set => this.ScreenState = value;
-    }
-
-    /// <summary>
-    /// Gets or sets the current state of the Screen
-    /// </summary>
     public virtual ScreenState ScreenState
     {
         get => this._screenState;
         protected set
         {
-            if (this.SetAndNotify(ref this._screenState, value))
-            {
-                // Temporary, until we remove 'State'
-#pragma warning disable CS0618 // Type or member is obsolete
-                this.NotifyOfPropertyChange(nameof(this.State));
-#pragma warning restore CS0618 // Type or member is obsolete
-            }
+            this.SetAndNotify(ref this._screenState, value);
             this.NotifyOfPropertyChange(nameof(this.IsActive));
         }
     }
@@ -264,24 +247,10 @@ public class Screen : ValidatingModelBase, IScreen
     /// <summary>
     /// Called when a conductor wants to know whether this screen can close.
     /// </summary>
-    /// <remarks>Internally, this calls CanClose, and wraps the response in a Task</remarks>
     /// <returns>A task returning true (can close) or false (can't close)</returns>
     public virtual Task<bool> CanCloseAsync()
     {
-        // Temporary, before we remove CanClose()
-#pragma warning disable CS0618 // Type or member is obsolete
-        return Task.FromResult(this.CanClose());
-#pragma warning restore CS0618 // Type or member is obsolete
-    }
-
-    /// <summary>
-    /// Synchronous alternative to CanClose
-    /// </summary>
-    /// <returns>True if this screen can close, or false otherwise</returns>
-    [Obsolete("This method is deprecated, please use CanCloseAsync() instead")]
-    protected virtual bool CanClose()
-    {
-        return true; 
+        return Task.FromResult(true);
     }
 
     #endregion
@@ -308,14 +277,4 @@ public class Screen : ValidatingModelBase, IScreen
     }
 
     #endregion
-
-    /// <summary>
-    /// Obselete - use RequestClose
-    /// </summary>
-    /// <param name="dialogResult">DialogResult to return, if this is a dialog</param>
-    [Obsolete("Obseleted by RequestClose")]
-    public virtual void TryClose(bool? dialogResult = null)
-    {
-        this.RequestClose(dialogResult);
-    }
 }

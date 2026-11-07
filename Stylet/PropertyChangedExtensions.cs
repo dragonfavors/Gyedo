@@ -1,9 +1,6 @@
 ﻿using System;
 using System.ComponentModel;
-using System.Diagnostics;
 using System.Linq.Expressions;
-using System.Reflection;
-using System.Runtime.CompilerServices;
 
 namespace Stylet;
 
@@ -42,7 +39,7 @@ public interface IEventBinding
 }
 
 /// <summary>
-/// Class holding extension methods on INotifyPropertyChanged, to allow strong/weak binding
+/// 속성 변경 이벤트의 구독과 해제를 지원합니다.
 /// </summary>
 public static class PropertyChangedExtensions
 {
@@ -61,57 +58,6 @@ public static class PropertyChangedExtensions
         {
             if (this.inpc.TryGetTarget(out INotifyPropertyChanged inpc))
                 inpc.PropertyChanged -= this.handler;
-        }
-    }
-
-    internal class WeakPropertyChangedHandler<TSource, TProperty> : IEventBinding where TSource : class, INotifyPropertyChanged
-    {
-        private readonly WeakReference<TSource> source;
-        private readonly EventHandler<PropertyChangedExtendedEventArgs<TProperty>> handler;
-        private readonly string propertyName;
-        private readonly Func<TSource, TProperty> valueSelector;
-
-        public WeakPropertyChangedHandler(TSource source, Expression<Func<TSource, TProperty>> selector, EventHandler<PropertyChangedExtendedEventArgs<TProperty>> handler)
-        {
-            // We keep a strong reference to the handler, and have the PropertyChangedEventManager keep a weak
-            // reference to us. This means that anyone retaining us will also retain the handler.
-
-            this.source = new WeakReference<TSource>(source);
-            this.handler = handler;
-            this.propertyName = selector.NameForProperty();
-            this.valueSelector = selector.Compile();
-
-            PropertyChangedEventManager.AddHandler(source, this.PropertyChangedHandler, this.propertyName);
-        }
-
-        private void PropertyChangedHandler(object sender, PropertyChangedEventArgs e)
-        {
-            bool got = this.source.TryGetTarget(out TSource source);
-            // We should never hit this case. The PropertyChangedeventManager shouldn't call us if the source became null
-            Debug.Assert(got);
-            this.handler(source, new PropertyChangedExtendedEventArgs<TProperty>(this.propertyName, this.valueSelector(source)));
-        }
-
-        public void Unbind()
-        {
-            if (this.source.TryGetTarget(out TSource source))
-                PropertyChangedEventManager.RemoveHandler(source, this.PropertyChangedHandler, this.propertyName);
-        }
-    }
-
-    internal class WeakPropertyChangedBinding : IEventBinding
-    {
-        private readonly WeakReference<IEventBinding> wrappedBinding;
-
-        public WeakPropertyChangedBinding(IEventBinding wrappedBinding)
-        {
-            this.wrappedBinding = new WeakReference<IEventBinding>(wrappedBinding);
-        }
-
-        public void Unbind()
-        {
-            if (this.wrappedBinding.TryGetTarget(out IEventBinding wrappedBinding))
-                wrappedBinding.Unbind();
         }
     }
 
@@ -183,26 +129,5 @@ public static class PropertyChangedExtensions
         }
 
         return listener;
-    }
-
-    /// <summary>
-    /// Obsolete: Weakly bind to PropertyChanged events for a particular property on a particular object
-    /// </summary>
-    /// <example>someObject.Bind(x => x.PropertyNameToBindTo, newValue => /* do something with the new value */)</example>
-    /// <typeparam name="TSource">Type of object providing the PropertyChanged event</typeparam>
-    /// <typeparam name="TProperty">Type of property for which the event is raised</typeparam>
-    /// <param name="target">Object raising the PropertyChanged event you're interested in</param>
-    /// <param name="targetSelector">MemberExpression selecting the property to observe for changes (e.g x => x.PropertyName)</param>
-    /// <param name="handler">Handler called whenever that property changed</param>
-    /// <returns>Something which can be used to undo the binding. You can discard it if you want</returns>
-    [Obsolete("Don't use this - use Bind instead and explicitly .Unbind it when appropriate.", error: true)]
-    public static IEventBinding BindWeak<TSource, TProperty>(this TSource target, Expression<Func<TSource, TProperty>> targetSelector, EventHandler<PropertyChangedExtendedEventArgs<TProperty>> handler) where TSource : class, INotifyPropertyChanged
-    {
-        CompilerGeneratedAttribute attribute = handler.Target.GetType().GetCustomAttribute<CompilerGeneratedAttribute>();
-        if (attribute != null)
-            throw new InvalidOperationException("Handler passed to BindWeak refers to a compiler-generated class. You may not capture local variables in the handler");
-
-        var binding = new WeakPropertyChangedHandler<TSource, TProperty>(target, targetSelector, handler);
-        return new WeakPropertyChangedBinding(binding);
     }
 }

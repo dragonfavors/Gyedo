@@ -1,20 +1,10 @@
 CONFIG = ENV['CONFIG'] || 'Debug'
 
-COVERAGE_DIR = 'Coverage'
-COVERAGE_FILE = File.join(COVERAGE_DIR, 'coverage.xml')
-
-GITLINK_REMOTE = 'https://github.com/canton7/stylet'
-NUSPEC = 'NuGet/Stylet.nuspec'
-
-ASSEMBLY_INFO = 'Stylet/Properties/AssemblyInfo.cs'
-
 CSPROJ = 'Stylet/Stylet.csproj'
 TEMPLATES_CSPROJ = 'StyletTemplates/StyletTemplates.csproj'
 UNIT_TESTS = 'StyletUnitTests/StyletUnitTests.csproj'
 
 TEMPLATES_DIR = 'StyletTemplates/templates'
-
-directory COVERAGE_DIR
 
 desc "Build the project using the current CONFIG (or Debug)"
 task :build do
@@ -52,48 +42,3 @@ task :version, [:version] do |t, args|
     File.open(csproj, 'w'){ |f| f.write(content) }
   end
 end
-
-desc "Extract StyletIoC as a standalone file"
-task :"extract-stylet-ioc" do
-  filenames = Dir['Stylet/StyletIoC/**/*.cs']
-  usings = Set.new
-  files = []
-
-  filenames.each do |file|
-    contents = File.read(file)
-    file_usings = contents.scan(/using .*?;$/)
-    usings.merge(file_usings)
-    
-    matches = contents.match(/namespace (.+?)\n{\n(.+)}.*/m)
-    namespace, file_contents = matches.captures
-
-    files << {
-      :from => file,
-      :contents => file_contents,
-      :namespace => namespace
-    }
-    # merged_contents << "    // Originally from #{file}\n\n" << file_contents << "\n"
-  end
-
-  File.open('StyletIoC.cs', 'w') do |outf|
-    outf.write(usings.to_a.join("\n"))
-
-    outf.puts
-
-    files.group_by{ |x| x[:namespace ] }.each do |namespace, ns_files|
-      outf.puts("\nnamespace #{namespace}")
-      outf.puts("{")
-      
-      ns_files.each do |file|
-        outf.puts("\n    // Originally from #{file[:from]}\n\n")
-        outf.puts(file[:contents])
-      end
-
-      outf.puts("}\n")
-    end
-  end
-
-  # puts merged_contents
-
-end
-

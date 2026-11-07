@@ -113,6 +113,20 @@ public class ScreenTests
     }
 
     [Test]
+    public void ScreenStateChangesNotifyStateAndActivity()
+    {
+        var properties = new List<string>();
+        this.screen.PropertyChanged += (sender, args) => properties.Add(args.PropertyName);
+
+        ((IScreenState)this.screen).Activate();
+        CollectionAssert.AreEquivalent(new[] { nameof(Screen.ScreenState), nameof(Screen.IsActive) }, properties);
+
+        properties.Clear();
+        ((IScreenState)this.screen).Deactivate();
+        CollectionAssert.AreEquivalent(new[] { nameof(Screen.ScreenState), nameof(Screen.IsActive) }, properties);
+    }
+
+    [Test]
     public void ActivateActivatesIfNotAlreadyActive()
     {
         ((IScreenState)this.screen).Activate();
@@ -372,7 +386,7 @@ public class ScreenTests
     }
 
     [Test]
-    public void CanCloseAsyncReturnsResultOfCanClose()
+    public void CanCloseAsyncCanRejectClosure()
     {
         this.screen.CanCloseResult = false;
         Task<bool> task = this.screen.CanCloseAsync();
@@ -395,28 +409,6 @@ public class ScreenTests
         this.screen.RequestClose(true);
         parent.Verify(x => x.CloseItem(this.screen, true));
     }
-
-    // OBSELETED - but need to test anyway...
-
-#pragma warning disable 618
-
-    [Test]
-    public void TryCloseThrowsIfParentIsNotIChildDelegate()
-    {
-        this.screen.Parent = new object();
-        Assert.Throws<InvalidOperationException>(() => this.screen.TryClose());
-    }
-
-    [Test]
-    public void TryCloseCallsParentCloseItemPassingDialogResult()
-    {
-        var parent = new Mock<IChildDelegate>();
-        this.screen.Parent = parent.Object;
-        this.screen.TryClose(true);
-        parent.Verify(x => x.CloseItem(this.screen, true));
-    }
-
-#pragma warning restore 618
 
     [Test]
     public void PassesValidatorAdapter()

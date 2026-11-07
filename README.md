@@ -40,6 +40,8 @@ CommunityToolkit.Mvvm 통합은 계획 중이며, 아직 적용되지 않았습�
 | View 탐색·생성·연결 | `ViewManager`, `View.Model` 사용 | 유지 |
 | 창·대화상자 관리 | `WindowManager` 사용 | 유지 |
 | 속성 알림·검증·메시징·IoC | Stylet 자체 구현 사용 | 유지 |
+| 이전 버전 호환 API | 폐기 예정 별칭과 동기 종료 확인 API 포함 | 제거하고 현행 API로 통일 |
+| 구형 설치·배포 파일 | .NET Framework용 `Stylet.Start` 설치 스크립트 등 포함 | 제거하고 .NET 10 라이브러리·템플릿 패키지 유지 |
 | 명령 연결 | `{s:Action Save}`로 메서드 호출 가능 | `ICommand` 속성에 일반 WPF 바인딩 사용 |
 | 명령 실행 조건 | Action에서 `CanSave` 같은 이름 규칙 해석 | 명령의 `CanExecute`와 `CanExecuteChanged`로 명시 |
 | 이벤트 연결 | Action으로 이벤트를 메서드에 연결 가능 | View 이벤트 처리기 등으로 명시 |
@@ -63,6 +65,20 @@ Action 제거는 기존 사용 코드와 호환되지 않는 변경입니다. �
 ```
 
 `SaveCommand`의 구현과 실행 조건 갱신은 애플리케이션에서 담당합니다. [샘플의 DelegateCommand](Samples/Common/DelegateCommand.cs)는 예제와 테스트용이며, 라이브러리 API로 제공하지 않습니다.
+
+폐기 표시가 붙어 있던 호환 API도 제거했습니다. 기존 코드는 다음과 같이 변경해야 합니다.
+
+| 제거한 API | 사용할 API |
+|---|---|
+| `Screen.State` | `Screen.ScreenState` |
+| `Screen.TryClose(...)` | `Screen.RequestClose(...)` |
+| `Screen.CanClose()` 재정의 | `Screen.CanCloseAsync()` 재정의 |
+| `ScreenState.Initial` | 새 화면의 초기 상태인 `ScreenState.Deactivated` |
+| `BindWeak(...)` | `Bind(...)` 또는 `BindAndInvoke(...)`, 필요 시 반환된 바인딩의 `Unbind()` 호출 |
+
+`Conductor`에 별도 종료 조건을 추가할 때는 `CanCloseAsync()`에서 `base.CanCloseAsync()`의 결과도 확인해 자식 화면의 종료 조건을 보존합니다. `ScreenExtensions.TryClose`는 화면 수명주기에 사용하는 별도 API로 유지합니다.
+
+사용하지 않는 .NET Framework 설치·실행 설정과 이전 형식의 단일 파일 추출 작업도 제거했습니다. IoC 구현은 그대로 유지하며, NuGet 패키지의 안내 문서는 이 README로 통일합니다.
 
 원본 문서의 화면 관리 설명은 참고할 수 있지만, Action과 `View.ActionTarget` 예제는 이 저장소에 적용되지 않습니다. 원본 NuGet 패키지에도 이 포크의 변경 사항이 포함된 것으로 간주해서는 안 됩니다.
 

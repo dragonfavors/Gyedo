@@ -13,6 +13,7 @@
     <PackageTags>WPF;MVVM;ViewModel;Screen Conductor;ViewModel-First;Model-View-ViewModel;UI</PackageTags>
     <Copyright>Copyright © 2014 Antony Male</Copyright>
     <PackageIcon>StyletIcon.png</PackageIcon>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
     <PackageProjectUrl>http://github.com/canton7/Stylet</PackageProjectUrl>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
     <RepositoryType>git</RepositoryType>
@@ -31,10 +32,8 @@
     <Compile Include="**\*.cs" Exclude="obj\**" />
     <None Remove="**\*.cs" />
 
-    <None Include="Settings.StyleCop" />
-    <None Include="Stylet.ruleset" />
     <None Include="..\StyletIcon.png" Pack="true" PackagePath="\" />
-    <None Include="..\NuGet\readme.txt" Pack="true" PackagePath="." />
+    <None Include="..\README.md" Pack="true" PackagePath="\" />
 
     <Page Include="MessageBoxView.xaml">
       <SubType>Designer</SubType>

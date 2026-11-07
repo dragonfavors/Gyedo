@@ -28,25 +28,19 @@ public interface IViewAware
 public enum ScreenState
 {
     /// <summary>
-    /// Deprecated: Screens now start in Deactivated
-    /// </summary>
-    [Obsolete("Screens now start in the Deactivated state")]
-    Initial,
-
-    /// <summary>
     /// Screen is active. It is likely being displayed to the user
     /// </summary>
-    Active,
+    Active = 1,
 
     /// <summary>
     /// Screen is deactivated. It is either new, has been hidden in favour of another Screen, or the entire window has been minimised
     /// </summary>
-    Deactivated,
+    Deactivated = 2,
 
     /// <summary>
     /// Screen has been closed. It has no associated View, but may yet be displayed again
     /// </summary>
-    Closed,
+    Closed = 3,
 }
 
 /// <summary>
