@@ -1,10 +1,8 @@
-﻿<Project Sdk="MSBuild.Sdk.Extras/3.0.23">
+﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
     <OutputType>Library</OutputType>
-    <TargetFrameworks>net452;netcoreapp3.0;netcoreapp3.1;net5.0-windows</TargetFrameworks>
-    <CheckEolTargetFramework>false</CheckEolTargetFramework>
-    <LangVersion>10</LangVersion>
+    <TargetFramework>net10.0-windows</TargetFramework>
     <UseWPF>true</UseWPF>
 
     <EnableDefaultItems>false</EnableDefaultItems>
@@ -23,17 +21,12 @@
     <Description>A very lightweight but powerful ViewModel-First MVVM framework for WPF, inspired by Caliburn.Micro.</Description>
     
     <!-- Just embed all sources in the PDB: snupkg files don't support bare .cs files, and SourceLink is annoying -->
-    <!-- We set IncludeSymbols in the Rakefile, because we don't want it to apply to Stylet.Start -->
-    <!-- Note that stack traces don't work on < net471, but snupkg only supports portable, so nothing we can do -->
+    <!-- 심볼 패키지 생성 여부는 Rakefile에서 지정합니다. -->
     <SymbolPackageFormat>snupkg</SymbolPackageFormat>
     <EmbedAllSources>true</EmbedAllSources>
     <DebugType>portable</DebugType>
   </PropertyGroup>
 
-  <ItemGroup Condition="'$(TargetFramework)' != 'net452'">
-    <PackageReference Include="System.Drawing.Common" Version="4.7.3" />
-  </ItemGroup>
-  
   <ItemGroup>
     <Compile Include="**\*.cs" Exclude="obj\**" />
     <None Remove="**\*.cs" />

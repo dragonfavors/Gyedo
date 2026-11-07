@@ -35,6 +35,7 @@ CommunityToolkit.Mvvm 통합은 계획 중이며, 아직 적용되지 않았습�
 
 | 항목 | 원본 Stylet | 이 저장소 |
 |---|---|---|
+| 대상 프레임워크 | .NET Framework 및 여러 .NET 버전 | .NET 10 WPF 전용 (`net10.0-windows`) |
 | 화면 수명주기와 탐색 | `Screen`, `Conductor` 사용 | 유지 |
 | View 탐색·생성·연결 | `ViewManager`, `View.Model` 사용 | 유지 |
 | 창·대화상자 관리 | `WindowManager` 사용 | 유지 |
@@ -48,6 +49,8 @@ CommunityToolkit.Mvvm 통합은 계획 중이며, 아직 적용되지 않았습�
 | README | 영어 | 한국어로 원본과 변경 사항 안내 |
 
 ## 기존 코드 사용 시 차이
+
+라이브러리·테스트·샘플·템플릿은 모두 .NET 10을 대상으로 합니다. 빌드에는 Windows와 .NET 10 SDK가 필요하며, 이전 대상 프레임워크는 지원하지 않습니다.
 
 Action 제거는 기존 사용 코드와 호환되지 않는 변경입니다. 다음처럼 명령 속성에 바인딩해야 합니다.
 

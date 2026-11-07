@@ -1,5 +1,3 @@
-﻿#if NETFRAMEWORK
-
 using Moq;
 using NUnit.Framework;
 using Stylet;
@@ -394,5 +392,3 @@ public class ViewManagerTests
         Assert.AreEqual("One.Two.ThingView", this.viewManager.ViewTypeNameForModelTypeName("Baz.Yay.ThingViewModel"));
     }
 }
-
-#endif

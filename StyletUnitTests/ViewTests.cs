@@ -1,5 +1,3 @@
-﻿#if NETFRAMEWORK
-
 using Moq;
 using NUnit.Framework;
 using Stylet;
@@ -151,5 +149,3 @@ public class ViewTests
         Assert.AreEqual("View for TestViewModel.SubViewModel", content.Text);
     }
 }
-
-#endif

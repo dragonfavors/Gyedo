@@ -5,7 +5,6 @@ COVERAGE_FILE = File.join(COVERAGE_DIR, 'coverage.xml')
 
 GITLINK_REMOTE = 'https://github.com/canton7/stylet'
 NUSPEC = 'NuGet/Stylet.nuspec'
-NUSPEC_START = 'NuGet/Stylet.start.nuspec'
 
 ASSEMBLY_INFO = 'Stylet/Properties/AssemblyInfo.cs'
 
@@ -29,8 +28,6 @@ end
 
 desc "Create NuGet package"
 task :package do
-  # Not sure why these have to be this way around, but they do
-  sh 'dotnet', 'pack', '--no-build', '-c', CONFIG, CSPROJ, "-p:NuSpecFile=../#{NUSPEC_START}"
   sh 'dotnet', 'pack', '--no-build', '-c', CONFIG, CSPROJ, '-p:IncludeSymbols=true'
   sh 'dotnet', 'pack', '-c', CONFIG, TEMPLATES_CSPROJ
 end
@@ -48,11 +45,6 @@ task :version, [:version] do |t, args|
   content = IO.read(TEMPLATES_CSPROJ)
   content[/<VersionPrefix>(.+?)<\/VersionPrefix>/, 1] = version
   File.open(TEMPLATES_CSPROJ, 'w'){ |f| f.write(content) }
-
-  content = IO.read(NUSPEC_START)
-  content[/<version>(.+?)<\/version>/, 1] = args[:version]
-  content[%r{<dependency id="Stylet" version="\[(.+?)\]"/>}, 1] = args[:version]
-  File.open(NUSPEC_START, 'w'){ |f| f.write(content) }
 
   Dir[File.join(TEMPLATES_DIR, '**/*.csproj')].each do |csproj|
     content = IO.read(csproj)

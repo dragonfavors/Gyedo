@@ -1,5 +1,3 @@
-﻿#if NETFRAMEWORK
-
 using Moq;
 using NUnit.Framework;
 using Stylet;
@@ -172,5 +170,3 @@ public class BootstrapperBaseTests
         this.windowManager.Verify(x => x.ShowWindow(viewModel));
     }
 }
-
-#endif

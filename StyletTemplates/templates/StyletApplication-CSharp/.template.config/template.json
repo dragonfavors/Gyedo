@@ -3,7 +3,7 @@
   "author": "Antony Male",
   "classifications": ["Common", "WPF", "MVVM", "Stylet"],
   "name": "Stylet Application",
-  "description": "A project for creating a .NET Core Stylet MVVM sApplications",
+  "description": ".NET 10용 Stylet WPF 애플리케이션 프로젝트",
   "identity": "Stylet.Templates",
   "shortName": "stylet",
   "tags": {

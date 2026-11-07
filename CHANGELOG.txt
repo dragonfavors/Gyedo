@@ -4,6 +4,9 @@ Stylet Changelog
 Unreleased
 ----------
 
+ - 라이브러리·테스트·샘플·템플릿의 대상을 net10.0-windows로 통일하고 표준 .NET SDK를 사용합니다.
+ - .NET Framework 전용 Stylet.Start 패키지는 더 이상 생성하지 않습니다.
+
  - Remove the XAML Action extension, its command/event implementations, and View.ActionTarget (breaking change).
  - Keep View.Model and screen/conductor lifecycle management; migrate examples to explicit ICommand bindings.
  - Handle built-in message box button clicks directly in the view.

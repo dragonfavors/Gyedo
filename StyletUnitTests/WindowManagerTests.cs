@@ -1,5 +1,3 @@
-﻿#if NETFRAMEWORK
-
 using Moq;
 using NUnit.Framework;
 using Stylet;
@@ -403,5 +401,3 @@ public class WindowManagerTests
         this.config.VerifyAll();
     }
 }
-
-#endif

@@ -17,9 +17,7 @@ public abstract class PropertyChangedBase : INotifyPropertyChanged, INotifyPrope
     /// Gets or sets the dispatcher to use to dispatch PropertyChanged events. Defaults to Execute.DefaultPropertyChangedDispatcher
     /// </summary>
     [System.Xml.Serialization.XmlIgnore]
-#if !NETFRAMEWORK
     [System.Text.Json.Serialization.JsonIgnore]
-#endif
     public virtual Action<Action> PropertyChangedDispatcher
     {
         get => this._propertyChangedDispatcher;
