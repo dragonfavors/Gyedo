@@ -29,6 +29,7 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\Stylet.Core\Stylet.Core.csproj" />
     <Compile Include="**\*.cs" Exclude="obj\**" />
     <None Remove="**\*.cs" />
 

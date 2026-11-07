@@ -27,7 +27,22 @@ Stylet은 Antony Male이 만든 WPF용 ViewModel 중심 MVVM 프레임워크입�
 
 그 첫 단계로 XAML Action 계열과 `View.ActionTarget`을 제거했습니다. 메서드 이름을 해석하고 호출 대상을 추적하던 자체 연결 계층을 줄이고, WPF의 명시적인 명령 바인딩과 이벤트 처리를 사용합니다.
 
-CommunityToolkit.Mvvm 통합은 계획 중이며, 아직 적용되지 않았습니다. Action 제거는 단순화를 위한 작업입니다.
+공통 코어와 WPF 구현을 분리해 추후 Avalonia 어댑터를 추가할 수 있는 구조로 정리했습니다. CommunityToolkit.Mvvm 통합과 Avalonia 지원은 아직 적용되지 않았습니다. Action 제거는 단순화를 위한 작업입니다.
+
+## 프로젝트 구조
+
+| 프로젝트 | 대상 | 역할 |
+|---|---|---|
+| [Stylet.Core](Stylet.Core/Stylet.Core.csproj) | `net10.0` | 화면 수명주기·탐색, 속성 알림·검증, 컬렉션, 메시징, IoC, 로깅, 디스패처 계약 |
+| [Stylet — WPF 구현](Stylet/Stylet.csproj) | `net10.0-windows` | View 연결, `View.Model`, 창·메시지 박스, 앱 초기화, WPF Dispatcher·디자인 모드 |
+| [공통 테스트](Stylet.Core.Tests/Stylet.Core.Tests.csproj) | `net10.0` | WPF 없이 공통 동작 검증 |
+| [WPF 테스트](StyletUnitTests/StyletUnitTests.csproj) | `net10.0-windows` | WPF 연결과 창 동작 검증 |
+
+WPF 프로젝트가 코어를 참조합니다. 코어는 WPF나 Avalonia를 참조하지 않으며, 공통 타입의 네임스페이스는 기존 `Stylet`과 `StyletIoC`를 유지합니다. WPF 패키지·어셈블리 이름도 기존 `Stylet`을 유지합니다.
+
+`Screen`은 실제 View를 보관하지 않습니다. WPF `ViewManager`가 화면의 View를 연결·재사용하고, `ViewReleaseRequested` 알림으로 종료 콜백 전에 연결을 해제합니다. 일반 ViewModel은 기존처럼 여러 View에 표시할 수 있습니다. View 로딩은 UI 타입이 없는 `IViewLifecycleAware.ViewLoaded()`를 통해 기존 `OnViewLoaded()` 훅에 전달하며, 화면 활성화와 별개입니다.
+
+공통 `IDispatcher`와 `Execute`는 유지하고, WPF `ApplicationDispatcher`는 Bootstrapper에서 연결합니다. 창·대화상자 API는 이번 단계에서 WPF 구현에 두며, 공통 비동기 대화상자 API는 후속 작업입니다.
 
 ## 원본과의 차이
 
@@ -35,7 +50,8 @@ CommunityToolkit.Mvvm 통합은 계획 중이며, 아직 적용되지 않았습�
 
 | 항목 | 원본 Stylet | 이 저장소 |
 |---|---|---|
-| 대상 프레임워크 | .NET Framework 및 여러 .NET 버전 | .NET 10 WPF 전용 (`net10.0-windows`) |
+| 대상 프레임워크 | .NET Framework 및 여러 .NET 버전 | 공통 코어 `net10.0`, WPF 구현 `net10.0-windows` |
+| UI 의존성 | 화면 모델에 WPF View 타입 포함 | 공통 코어와 WPF 구현 분리 |
 | 화면 수명주기와 탐색 | `Screen`, `Conductor` 사용 | 유지 |
 | View 탐색·생성·연결 | `ViewManager`, `View.Model` 사용 | 유지 |
 | 창·대화상자 관리 | `WindowManager` 사용 | 유지 |
@@ -52,7 +68,17 @@ CommunityToolkit.Mvvm 통합은 계획 중이며, 아직 적용되지 않았습�
 
 ## 기존 코드 사용 시 차이
 
-라이브러리·테스트·샘플·템플릿은 모두 .NET 10을 대상으로 합니다. 빌드에는 Windows와 .NET 10 SDK가 필요하며, 이전 대상 프레임워크는 지원하지 않습니다.
+모든 프로젝트는 .NET 10을 대상으로 합니다. 공통 코어와 공통 테스트는 .NET 10 SDK만으로 빌드·실행할 수 있으며, WPF 프로젝트·샘플·템플릿은 Windows가 필요합니다. 이전 대상 프레임워크는 지원하지 않습니다.
+
+공통 기능만 사용하는 프로젝트는 `Stylet.Core`를 참조합니다. WPF 애플리케이션은 기존 `Stylet`을 참조하면 코어가 함께 포함됩니다. 공통 타입의 어셈블리가 이동했으므로 기존 소비 프로젝트는 다시 빌드해야 합니다.
+
+| 분리 전 | 분리 후 |
+|---|---|
+| `Screen.View`, `IViewAware.AttachView(...)`를 통한 Screen 연결 | WPF `IViewManager.BindViewToModel(...)`, `GetView(model)` 사용 |
+| `IScreen`의 WPF `IViewAware` 상속 | 분리. `IViewAware`는 WPF 커스텀 모델용 선택적 인터페이스로 유지 |
+| `Execute.InDesignMode` | WPF `DesignMode.IsEnabled` |
+| `IWindowManager`의 `IViewAware ownerViewModel` 매개변수 | 연결된 Screen 또는 WPF `IViewAware`를 객체로 받고 ViewManager에서 소유 View 조회 |
+| XAML에서 공통 타입을 직접 참조하는 `assembly=Stylet` | 해당 공통 타입은 `assembly=Stylet.Core`로 변경 |
 
 Action 제거는 기존 사용 코드와 호환되지 않는 변경입니다. 다음처럼 명령 속성에 바인딩해야 합니다.
 

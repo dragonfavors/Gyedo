@@ -228,22 +228,4 @@ public class ExecuteTests
         Assert.IsTrue(actionCalled);
     }
 
-    [Test]
-    public void InDesignModeIsOverridable()
-    {
-        try
-        {
-            Assert.False(Execute.InDesignMode);
-
-            Execute.InDesignMode = true;
-            Assert.True(Execute.InDesignMode);
-
-            Execute.InDesignMode = false;
-            Assert.False(Execute.InDesignMode);
-        }
-        finally
-        {
-            Execute.InDesignMode = false;
-        }
-    }
 }

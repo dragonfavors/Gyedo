@@ -4,6 +4,9 @@ Stylet Changelog
 Unreleased
 ----------
 
+ - 공통 화면 관리 코드를 Stylet.Core(net10.0)로 분리하고 기존 Stylet은 WPF 구현으로 유지합니다.
+ - Screen의 WPF View 연결·캐시를 ViewManager로 이동하고 공통 View 로딩 알림을 분리합니다(호환성 변경).
+ - 공통 테스트를 WPF 없이 실행하는 별도 프로젝트로 분리합니다.
  - 라이브러리·테스트·샘플·템플릿의 대상을 net10.0-windows로 통일하고 표준 .NET SDK를 사용합니다.
  - .NET Framework 전용 Stylet.Start 패키지는 더 이상 생성하지 않습니다.
  - 구형 설치 스크립트·실행 설정과 사용하지 않는 빌드 작업을 제거하고, NuGet 안내 문서를 README로 통일합니다.

@@ -1,7 +1,5 @@
-﻿using System;
-using System.ComponentModel;
+using System;
 using System.Threading.Tasks;
-using System.Windows;
 
 namespace Stylet;
 
@@ -16,9 +14,8 @@ public static class Execute
     /// Gets or sets Execute's dispatcher
     /// </summary>
     /// <remarks>
-    /// Should be set a <see cref="ApplicationDispatcher"/> wrapping the current application's dispatcher, which is
-    /// normally done by the Bootstrapper. Can also be set to <see cref="SynchronousDispatcher.Instance"/>, or a
-    /// custom <see cref="IDispatcher"/> implementation.
+    /// UI 어댑터에서 현재 애플리케이션의 디스패처를 설정합니다.
+    /// 설정 전에는 <see cref="SynchronousDispatcher.Instance"/>로 동기 실행합니다.
     /// </remarks>
     public static IDispatcher Dispatcher
     {
@@ -26,11 +23,9 @@ public static class Execute
         set => _dispatcher = value ?? throw new ArgumentNullException(nameof(Dispatcher));
     }
 
-    private static bool? inDesignMode;
-
     /// <summary>
     /// Gets or sets the default dispatcher used by PropertyChanged events.
-    /// Defaults to OnUIThread
+    /// 기본값은 호출한 스레드에서 동기 실행합니다.
     /// </summary>
     public static Action<Action> DefaultPropertyChangedDispatcher { get; set; }
 
@@ -135,25 +130,5 @@ public static class Execute
             }
         });
         return tcs.Task;
-    }
-
-    /// <summary>
-    /// Gets or sets a value indicating whether design mode is currently active.
-    /// Settable for really obscure unit testing only
-    /// </summary>
-    public static bool InDesignMode
-    {
-        get
-        {
-            if (inDesignMode == null)
-            {
-                var descriptor = DependencyPropertyDescriptor.FromProperty(DesignerProperties.IsInDesignModeProperty, typeof(FrameworkElement));
-                inDesignMode = (bool)descriptor.Metadata.DefaultValue;
-            }
-
-            return inDesignMode.Value;
-        }
-
-        set => inDesignMode = value;
     }
 }

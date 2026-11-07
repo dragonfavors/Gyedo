@@ -1,14 +1,13 @@
-﻿using Stylet.Logging;
+using Stylet.Logging;
 using System;
 using System.Threading.Tasks;
-using System.Windows;
 
 namespace Stylet;
 
 /// <summary>
 /// Implementation of IScreen. Useful as a base class for your ViewModels
 /// </summary>
-public class Screen : ValidatingModelBase, IScreen
+public class Screen : ValidatingModelBase, IScreen, IViewLifecycleAware
 {
     private readonly ILogger logger;
 
@@ -87,6 +86,9 @@ public class Screen : ValidatingModelBase, IScreen
     /// Called whenever this Screen is closed
     /// </summary>
     public event EventHandler<CloseEventArgs> Closed;
+
+    /// <inheritdoc/>
+    public event EventHandler ViewReleaseRequested;
 
     /// <summary>
     /// Called the very first time this Screen is activated, and never again
@@ -179,7 +181,8 @@ public class Screen : ValidatingModelBase, IScreen
         if (this.ScreenState != ScreenState.Closed)
             ((IScreenState)this).Deactivate();
 
-        this.View = null;
+        this.ViewReleaseRequested?.Invoke(this, EventArgs.Empty);
+
         // Reset, so we can initially activate again
         this.haveActivated = false;
 
@@ -195,37 +198,15 @@ public class Screen : ValidatingModelBase, IScreen
 
     #endregion
 
-    #region IViewAware
-
     /// <summary>
-    /// Gets the View attached to this ViewModel, if any. Using this should be a last resort
+    /// UI 어댑터가 View 로딩을 알릴 때 호출됩니다. 화면 활성화와는 별개입니다.
     /// </summary>
-    public UIElement View { get; private set; }
-
-    void IViewAware.AttachView(UIElement view)
-    {
-        if (this.View != null)
-            throw new InvalidOperationException(string.Format("Tried to attach View {0} to ViewModel {1}, but it already has a view attached", view.GetType().Name, this.GetType().Name));
-
-        this.View = view;
-
-        this.logger.Info("Attaching view {0}", view);
-
-        if (view is FrameworkElement viewAsFrameworkElement)
-        {
-            if (viewAsFrameworkElement.IsLoaded)
-                this.OnViewLoaded();
-            else
-                viewAsFrameworkElement.Loaded += (o, e) => this.OnViewLoaded();
-        }
-    }
+    void IViewLifecycleAware.ViewLoaded() => this.OnViewLoaded();
 
     /// <summary>
-    /// Called when the view attaches to the Screen loads
+    /// 연결된 View가 로드되었을 때 실행할 작업입니다.
     /// </summary>
     protected virtual void OnViewLoaded() { }
-
-    #endregion
 
     #region IChild
 

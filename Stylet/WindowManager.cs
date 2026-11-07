@@ -23,7 +23,7 @@ public interface IWindowManager
     /// </summary>
     /// <param name="viewModel">ViewModel to show the View for</param>
     /// <param name="ownerViewModel">The ViewModel for the View which should own this window</param>
-    void ShowWindow(object viewModel, IViewAware ownerViewModel);
+    void ShowWindow(object viewModel, object ownerViewModel);
 
     /// <summary>
     /// Given a ViewModel, show its corresponding View as a Dialog
@@ -38,7 +38,7 @@ public interface IWindowManager
     /// <param name="viewModel">ViewModel to show the View for</param>
     /// <param name="ownerViewModel">The ViewModel for the View which should own this dialog</param>
     /// <returns>DialogResult of the View</returns>
-    bool? ShowDialog(object viewModel, IViewAware ownerViewModel);
+    bool? ShowDialog(object viewModel, object ownerViewModel);
 
     /// <summary>
     /// Display a MessageBox
@@ -112,7 +112,7 @@ public class WindowManager : IWindowManager
     /// </summary>
     /// <param name="viewModel">ViewModel to show the View for</param>
     /// <param name="ownerViewModel">The ViewModel for the View which should own this window</param>
-    public void ShowWindow(object viewModel, IViewAware ownerViewModel)
+    public void ShowWindow(object viewModel, object ownerViewModel)
     {
         this.CreateWindow(viewModel, false, ownerViewModel).Show();
     }
@@ -133,7 +133,7 @@ public class WindowManager : IWindowManager
     /// <param name="viewModel">ViewModel to show the View for</param>
     /// <param name="ownerViewModel">The ViewModel for the View which should own this dialog</param>
     /// <returns>DialogResult of the View</returns>
-    public bool? ShowDialog(object viewModel, IViewAware ownerViewModel)
+    public bool? ShowDialog(object viewModel, object ownerViewModel)
     {
         return this.CreateWindow(viewModel, true, ownerViewModel).ShowDialog();
     }
@@ -173,7 +173,7 @@ public class WindowManager : IWindowManager
     /// <param name="isDialog">True if the window will be used as a dialog</param>
     /// <param name="ownerViewModel">Optionally the ViewModel which owns the view which should own this window</param>
     /// <returns>Window which was created and set up</returns>
-    protected virtual Window CreateWindow(object viewModel, bool isDialog, IViewAware ownerViewModel)
+    protected virtual Window CreateWindow(object viewModel, bool isDialog, object ownerViewModel)
     {
         UIElement view = this.viewManager.CreateAndBindViewForModelIfNecessary(viewModel);
         if (view is not Window window)
@@ -192,7 +192,7 @@ public class WindowManager : IWindowManager
             window.SetBinding(Window.TitleProperty, binding);
         }
 
-        if (ownerViewModel?.View is Window explicitOwner)
+        if (ownerViewModel != null && this.viewManager.GetView(ownerViewModel) is Window explicitOwner)
         {
             window.Owner = explicitOwner;
         }

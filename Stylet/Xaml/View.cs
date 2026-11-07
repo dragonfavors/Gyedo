@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Reflection;
 using System.Windows;
 using System.Windows.Data;
@@ -46,7 +46,7 @@ public static class View
         {
             if (((FrameworkElement)d).TryFindResource(ViewManagerResourceKey) is not IViewManager viewManager)
             {
-                if (Execute.InDesignMode)
+                if (DesignMode.IsEnabled)
                 {
                     BindingExpression bindingExpression = BindingOperations.GetBindingExpression(d, ModelProperty);
                     string text;

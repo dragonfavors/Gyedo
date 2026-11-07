@@ -37,7 +37,7 @@ public class ViewTests
     [TearDown]
     public void TearDown()
     {
-        Execute.InDesignMode = false;
+        DesignMode.IsEnabled = false;
     }
 
     [Test]
@@ -101,7 +101,7 @@ public class ViewTests
     [Test]
     public void InDesignModeSettingViewModelWithBrokenBindingGivesAppropriateMessage()
     {
-        Execute.InDesignMode = true;
+        DesignMode.IsEnabled = true;
 
         var element = new ContentControl();
         // Don't set View.Model to a binding - just a random object
@@ -116,7 +116,7 @@ public class ViewTests
     [Test]
     public void InDesignModeSettingViewModelWithCollectionBindingGivesAppropriateMessage()
     {
-        Execute.InDesignMode = true;
+        DesignMode.IsEnabled = true;
 
         var element = new ContentControl();
         var vm = new TestViewModel();
@@ -134,7 +134,7 @@ public class ViewTests
     [Test]
     public void InDesignModeSettingViewModelWithGoodBindingGivesAppropriateMessage()
     {
-        Execute.InDesignMode = true;
+        DesignMode.IsEnabled = true;
 
         var element = new ContentControl();
         var vm = new TestViewModel();

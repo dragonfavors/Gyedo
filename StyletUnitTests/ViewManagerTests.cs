@@ -5,10 +5,12 @@ using Stylet.Xaml;
 using System;
 using System.Collections.Generic;
 using System.Reflection;
+using System.Runtime.CompilerServices;
 using System.Windows;
 using System.Windows.Controls;
 using System.Linq;
 using System.Threading;
+using System.Threading.Tasks;
 
 namespace StyletUnitTests;
 
@@ -125,6 +127,22 @@ public class ViewManagerTests
         }
     }
 
+    private class LoadingScreen : Screen
+    {
+        public int LoadCount { get; private set; }
+        public Action CloseAction { get; set; }
+        protected override void OnViewLoaded() => this.LoadCount++;
+        protected override void OnClose() => this.CloseAction?.Invoke();
+    }
+
+    private class LoadingModel : IViewLifecycleAware
+    {
+        public int LoadCount { get; private set; }
+        public event EventHandler ViewReleaseRequested;
+        public void ViewLoaded() => this.LoadCount++;
+        public void ReleaseView() => this.ViewReleaseRequested?.Invoke(this, EventArgs.Empty);
+    }
+
     private ViewManagerConfig config;
     private AccessibleViewManager viewManager;
 
@@ -186,7 +204,7 @@ public class ViewManagerTests
     public void OnModelChangedUsesViewIfAlreadySet()
     {
         var target = new ContentControl();
-        var model = new Mock<IScreen>();
+        var model = new Mock<IViewAware>();
         var view = new UIElement();
 
         model.Setup(x => x.View).Returns(view);
@@ -344,6 +362,233 @@ public class ViewManagerTests
         viewManager.BindViewToModel(view, model.Object);
 
         model.Verify(x => x.AttachView(view));
+    }
+
+    [Test]
+    public void ScreenViewsAreCachedUntilTheScreenCloses()
+    {
+        var model = new Screen();
+        var manager = new LocatingViewManager(new ViewManagerConfig
+        {
+            ViewFactory = _ => new FrameworkElement(),
+            ViewAssemblies = new List<Assembly>(),
+        });
+        manager.LocatedViewType = typeof(FrameworkElement);
+
+        UIElement original = manager.CreateAndBindViewForModelIfNecessary(model);
+        Assert.AreSame(original, manager.GetView(model));
+        Assert.AreSame(original, manager.CreateAndBindViewForModelIfNecessary(model));
+
+        ((IScreenState)model).Close();
+        Assert.IsNull(manager.GetView(model));
+
+        ((IScreenState)model).Activate();
+        UIElement reopened = manager.CreateAndBindViewForModelIfNecessary(model);
+        Assert.AreNotSame(original, reopened);
+        Assert.AreSame(reopened, manager.GetView(model));
+    }
+
+    [Test]
+    public void BindingAnotherViewToTheSameModelIsRejected()
+    {
+        var model = new Screen();
+        var original = new FrameworkElement();
+        var replacement = new FrameworkElement();
+        this.viewManager.BindViewToModel(original, model);
+
+        Assert.Throws<InvalidOperationException>(() => this.viewManager.BindViewToModel(replacement, model));
+        Assert.AreSame(original, this.viewManager.GetView(model));
+        Assert.IsNull(replacement.DataContext);
+    }
+
+    [Test]
+    public void LoadingTheViewNotifiesWithoutActivatingTheScreen()
+    {
+        var model = new LoadingScreen();
+        var view = new FrameworkElement();
+        this.viewManager.BindViewToModel(view, model);
+        this.viewManager.BindViewToModel(view, model);
+
+        view.RaiseEvent(new RoutedEventArgs(FrameworkElement.LoadedEvent));
+
+        Assert.AreEqual(1, model.LoadCount);
+        Assert.AreEqual(ScreenState.Deactivated, model.ScreenState);
+    }
+
+    [Test]
+    public void ClosingTheScreenRemovesTheOldLoadedCallback()
+    {
+        var model = new LoadingScreen();
+        var original = new FrameworkElement();
+        this.viewManager.BindViewToModel(original, model);
+        ((IScreenState)model).Close();
+
+        var replacement = new FrameworkElement();
+        ((IScreenState)model).Activate();
+        this.viewManager.BindViewToModel(replacement, model);
+        original.RaiseEvent(new RoutedEventArgs(FrameworkElement.LoadedEvent));
+        Assert.AreEqual(0, model.LoadCount);
+
+        replacement.RaiseEvent(new RoutedEventArgs(FrameworkElement.LoadedEvent));
+        Assert.AreEqual(1, model.LoadCount);
+        Assert.AreSame(replacement, this.viewManager.GetView(model));
+    }
+
+    [TestCase(false)]
+    [TestCase(true)]
+    public void ClosingCallbacksCanConnectANewView(bool reconnectFromClosedEvent)
+    {
+        var model = new LoadingScreen();
+        var manager = new LocatingViewManager(new ViewManagerConfig
+        {
+            ViewFactory = _ => new FrameworkElement(),
+            ViewAssemblies = new List<Assembly>(),
+        });
+        manager.LocatedViewType = typeof(FrameworkElement);
+        FrameworkElement replacement = null;
+        void Reconnect()
+        {
+            Assert.IsNull(manager.GetView(model));
+            replacement = (FrameworkElement)manager.CreateAndBindViewForModelIfNecessary(model);
+        }
+
+        // 기존 View의 연결보다 먼저 등록된 종료 이벤트에서도 재연결할 수 있어야 합니다.
+        if (reconnectFromClosedEvent)
+            model.Closed += (_, _) => Reconnect();
+        else
+            model.CloseAction = Reconnect;
+
+        var original = (FrameworkElement)manager.CreateAndBindViewForModelIfNecessary(model);
+        ((IScreenState)model).Close();
+
+        Assert.IsNotNull(replacement);
+        Assert.AreNotSame(original, replacement);
+        Assert.AreSame(replacement, manager.GetView(model));
+        original.RaiseEvent(new RoutedEventArgs(FrameworkElement.LoadedEvent));
+        Assert.AreEqual(0, model.LoadCount);
+        replacement.RaiseEvent(new RoutedEventArgs(FrameworkElement.LoadedEvent));
+        Assert.AreEqual(1, model.LoadCount);
+    }
+
+    [Test]
+    public void ClosingOnAWorkerDoesNotWaitForTheUiThread()
+    {
+        var model = new LoadingScreen();
+        var view = new FrameworkElement();
+        this.viewManager.BindViewToModel(view, model);
+
+        Task close = Task.Run(() => ((IScreenState)model).Close());
+        Assert.IsTrue(close.Wait(TimeSpan.FromSeconds(5)), "View 해제가 UI 스레드의 동기 처리를 기다립니다.");
+
+        Assert.IsNull(this.viewManager.GetView(model));
+        // UI 이벤트 구독 해제가 큐에 남아 있어도 이전 로딩 알림은 무시합니다.
+        view.RaiseEvent(new RoutedEventArgs(FrameworkElement.LoadedEvent));
+        Assert.AreEqual(0, model.LoadCount);
+    }
+
+    [Test]
+    public void ScreenStateOnlyModelsReleaseTheirViewOnClosed()
+    {
+        var model = new Mock<IScreenState>();
+        this.viewManager.BindViewToModel(new FrameworkElement(), model.Object);
+        Assert.IsNotNull(this.viewManager.GetView(model.Object));
+
+        model.Raise(x => x.Closed += null, new CloseEventArgs(ScreenState.Deactivated));
+
+        Assert.IsNull(this.viewManager.GetView(model.Object));
+    }
+
+    [Test]
+    public void LifecycleOnlyModelsCanReleaseTheirViewCallbacks()
+    {
+        var model = new LoadingModel();
+        var first = new FrameworkElement();
+        var second = new FrameworkElement();
+        this.viewManager.BindViewToModel(first, model);
+        this.viewManager.BindViewToModel(second, model);
+
+        model.ReleaseView();
+        first.RaiseEvent(new RoutedEventArgs(FrameworkElement.LoadedEvent));
+        second.RaiseEvent(new RoutedEventArgs(FrameworkElement.LoadedEvent));
+
+        Assert.AreEqual(0, model.LoadCount);
+        Assert.IsNull(this.viewManager.GetView(model));
+    }
+
+    [Test]
+    public void ClosingAWindowRemovesTheLifecycleOnlyModelsLoadedCallback()
+    {
+        var model = new LoadingModel();
+        var window = new Window();
+        this.viewManager.BindViewToModel(window, model);
+        Assert.IsNull(this.viewManager.GetView(model));
+
+        window.RaiseEvent(new RoutedEventArgs(FrameworkElement.LoadedEvent));
+        Assert.AreEqual(1, model.LoadCount);
+
+        window.Close();
+        window.RaiseEvent(new RoutedEventArgs(FrameworkElement.LoadedEvent));
+
+        Assert.AreEqual(1, model.LoadCount);
+    }
+
+    [TestCase(false)]
+    [TestCase(true)]
+    public void RegularViewModelsCanBeShownInMultipleContentControls(bool notifyLoading)
+    {
+        object model = notifyLoading ? new LoadingModel() : new object();
+        var manager = new LocatingViewManager(new ViewManagerConfig
+        {
+            ViewFactory = _ => new FrameworkElement(),
+            ViewAssemblies = new List<Assembly>(),
+        });
+        manager.LocatedViewType = typeof(FrameworkElement);
+        var firstContainer = new ContentControl();
+        var secondContainer = new ContentControl();
+
+        manager.OnModelChanged(firstContainer, null, model);
+        manager.OnModelChanged(secondContainer, null, model);
+
+        var first = (FrameworkElement)firstContainer.Content;
+        var second = (FrameworkElement)secondContainer.Content;
+        Assert.AreNotSame(first, second);
+        Assert.AreSame(model, first.DataContext);
+        Assert.AreSame(model, second.DataContext);
+        Assert.IsNull(manager.GetView(model));
+
+        if (model is LoadingModel loadingModel)
+        {
+            first.RaiseEvent(new RoutedEventArgs(FrameworkElement.LoadedEvent));
+            second.RaiseEvent(new RoutedEventArgs(FrameworkElement.LoadedEvent));
+            Assert.AreEqual(2, loadingModel.LoadCount);
+        }
+    }
+
+    [Test]
+    public void UnconnectedModelsHaveNoView()
+    {
+        Assert.IsNull(this.viewManager.GetView(new Screen()));
+        Assert.IsNull(this.viewManager.GetView(null));
+    }
+
+    [Test]
+    public void CachedViewsDoNotKeepUnusedViewModelsAlive()
+    {
+        WeakReference<Screen> model = CreateUnreferencedScreen(this.viewManager);
+
+        GC.Collect();
+        GC.WaitForPendingFinalizers();
+        GC.Collect();
+
+        Assert.IsFalse(model.TryGetTarget(out _));
+    }
+
+    [MethodImpl(MethodImplOptions.NoInlining)]
+    private static WeakReference<Screen> CreateUnreferencedScreen(IViewManager manager)
+    {
+        var model = new Screen();
+        manager.BindViewToModel(new FrameworkElement(), model);
+        return new WeakReference<Screen>(model);
     }
 
     [Test]

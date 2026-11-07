@@ -7,6 +7,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Data;
+using System.Windows.Interop;
 
 namespace StyletUnitTests;
 
@@ -23,9 +24,9 @@ public class WindowManagerTests
         public MyWindowManager(IViewManager viewManager, Func<IMessageBoxViewModel> messageBoxViewModelFactory, IWindowManagerConfig config)
             : base(viewManager, messageBoxViewModelFactory, config) { }
 
-        public Window CreateWindow(object viewModel, bool isDialog)
+        public new Window CreateWindow(object viewModel, bool isDialog, object ownerViewModel = null)
         {
-            return base.CreateWindow(viewModel, isDialog, null);
+            return base.CreateWindow(viewModel, isDialog, ownerViewModel);
         }
     }
 
@@ -34,7 +35,7 @@ public class WindowManagerTests
         public WindowManagerWithoutCreateWindow(IViewManager viewManager, Func<IMessageBoxViewModel> messageBoxViewModelFactory, IWindowManagerConfig config)
             : base(viewManager, messageBoxViewModelFactory, config) { }
 
-        protected override Window CreateWindow(object viewModel, bool isDialog, IViewAware ownerViewModel)
+        protected override Window CreateWindow(object viewModel, bool isDialog, object ownerViewModel)
         {
             throw new TestException(); // ABORT! ABORT!
         }
@@ -399,5 +400,32 @@ public class WindowManagerTests
         this.windowManager.CreateWindow(model, true);
 
         this.config.VerifyAll();
+    }
+
+    [Test]
+    public void CreateWindowFindsAnExplicitScreenOwnerThroughTheViewManager()
+    {
+        var ownerModel = new Screen();
+        var childModel = new Screen();
+        var owner = new Window();
+        var child = new Window();
+        this.viewManager.Setup(x => x.GetView(ownerModel)).Returns(owner);
+        this.viewManager.Setup(x => x.CreateAndBindViewForModelIfNecessary(childModel)).Returns(child);
+
+        try
+        {
+            new WindowInteropHelper(owner).EnsureHandle();
+            this.windowManager.CreateWindow(childModel, true, ownerModel);
+
+            Assert.AreSame(owner, child.Owner);
+            Assert.AreEqual(WindowStartupLocation.CenterOwner, child.WindowStartupLocation);
+            this.viewManager.Verify(x => x.GetView(ownerModel), Times.Once);
+            this.config.Verify(x => x.GetActiveWindow(), Times.Never);
+        }
+        finally
+        {
+            child.Close();
+            owner.Close();
+        }
     }
 }

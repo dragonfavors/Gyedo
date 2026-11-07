@@ -4,7 +4,6 @@ using Stylet;
 using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
-using System.Windows;
 
 namespace StyletUnitTests;
 
@@ -284,14 +283,6 @@ public class ScreenTests
     }
 
     [Test]
-    public void CloseClearsView()
-    {
-        ((IViewAware)this.screen).AttachView(new UIElement());
-        ((IScreenState)this.screen).Close();
-        Assert.IsNull(this.screen.View);
-    }
-
-    [Test]
     public void CloseFiresClosed()
     {
         bool fired = false;
@@ -350,19 +341,13 @@ public class ScreenTests
     }
 
     [Test]
-    public void AttachViewAttachesView()
+    public void ViewLoadedNotifiesWithoutActivatingScreen()
     {
-        var view = new UIElement();
-        ((IViewAware)this.screen).AttachView(view);
-        Assert.AreEqual(view, this.screen.View);
-    }
+        ((IViewLifecycleAware)this.screen).ViewLoaded();
 
-    [Test]
-    public void AttachViewThrowsIfViewAlreadyAttached()
-    {
-        var view = new UIElement();
-        ((IViewAware)this.screen).AttachView(view);
-        Assert.Throws<InvalidOperationException>(() => ((IViewAware)this.screen).AttachView(view));
+        Assert.IsTrue(this.screen.OnViewLoadedCalled);
+        Assert.AreEqual(ScreenState.Deactivated, this.screen.ScreenState);
+        Assert.IsFalse(this.screen.OnActivateCalled);
     }
 
     [Test]

@@ -4,6 +4,8 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
+using System.Runtime.CompilerServices;
+using System.Threading;
 using System.Text.RegularExpressions;
 using System.Windows;
 
@@ -14,6 +16,12 @@ namespace Stylet;
 /// </summary>
 public interface IViewManager
 {
+    /// <summary>
+    /// IScreenState 또는 IViewAware 모델의 연결된 WPF View를 반환합니다.
+    /// 일반 모델은 여러 View에 표시할 수 있으므로 캐시하지 않고 null을 반환합니다.
+    /// </summary>
+    UIElement GetView(object model);
+
     /// <summary>
     /// Called by View whenever its current View.Model changes. Will locate and instantiate the correct view, and set it as the target's Content
     /// </summary>
@@ -66,6 +74,7 @@ public class ViewManagerConfig
 public class ViewManager : IViewManager
 {
     private static readonly ILogger logger = LogManager.GetLogger(typeof(ViewManager));
+    private readonly ConditionalWeakTable<object, ViewBinding> views = new();
 
     private Func<Type, object> _viewFactory; // This is assigned by the ctor
 
@@ -178,13 +187,25 @@ public class ViewManager : IViewManager
     /// <returns>Newly created View, bound to the given ViewModel</returns>
     public virtual UIElement CreateAndBindViewForModelIfNecessary(object model)
     {
-        if (model is IViewAware modelAsViewAware && modelAsViewAware.View != null)
+        UIElement view = this.GetView(model);
+        if (view != null)
         {
             logger.Info("ViewModel {0} already has a View attached to it. Not attaching another", model);
-            return modelAsViewAware.View;
+            return view;
         }
 
         return this.CreateAndBindViewForModel(model);
+    }
+
+    /// <inheritdoc/>
+    public virtual UIElement GetView(object model)
+    {
+        if (model == null)
+            return null;
+
+        return this.views.TryGetValue(model, out ViewBinding binding)
+            ? binding.View
+            : (model as IViewAware)?.View;
     }
 
     /// <summary>
@@ -312,16 +333,122 @@ public class ViewManager : IViewManager
     /// <param name="viewModel">ViewModel to bind the View to</param>
     public virtual void BindViewToModel(UIElement view, object viewModel)
     {
+        ArgumentNullException.ThrowIfNull(view);
+        ArgumentNullException.ThrowIfNull(viewModel);
+
+        UIElement existingView = this.GetView(viewModel);
+        if (existingView != null && !ReferenceEquals(existingView, view))
+            throw new InvalidOperationException("ViewModel에 이미 다른 View가 연결되어 있습니다.");
+
+        if (this.views.TryGetValue(viewModel, out _))
+            return;
+
         if (view is FrameworkElement viewAsFrameworkElement)
         {
             logger.Info("Setting {0}'s DataContext to {1}", view, viewModel);
             viewAsFrameworkElement.DataContext = viewModel;
         }
 
-        if (viewModel is IViewAware viewModelAsViewAware)
+        if (viewModel is IViewAware viewModelAsViewAware && existingView == null)
         {
             logger.Info("Setting {0}'s View to {1}", viewModel, view);
             viewModelAsViewAware.AttachView(view);
+        }
+
+        bool cacheView = viewModel is IScreenState or IViewAware;
+        if (!cacheView && viewModel is not IViewLifecycleAware)
+            return;
+
+        // 일반 모델의 로딩 알림은 각 View가 보유합니다. 모델별 View 캐시는 만들지 않습니다.
+        var binding = new ViewBinding(this, viewModel, view);
+        if (cacheView)
+            this.views.Add(viewModel, binding);
+        try
+        {
+            binding.Attach();
+        }
+        catch
+        {
+            binding.Release();
+            throw;
+        }
+    }
+
+    // View와 이벤트 연결은 UI 어댑터가 관리합니다. 코어에는 WPF 객체를 전달하지 않습니다.
+    private sealed class ViewBinding
+    {
+        private readonly ViewManager owner;
+        private readonly WeakReference<object> model;
+        private int released;
+
+        public UIElement View { get; }
+
+        public ViewBinding(ViewManager owner, object model, UIElement view)
+        {
+            this.owner = owner;
+            this.model = new WeakReference<object>(model);
+            this.View = view;
+        }
+
+        public void Attach()
+        {
+            if (!this.model.TryGetTarget(out object target))
+                return;
+
+            if (target is IViewLifecycleAware lifecycle)
+                lifecycle.ViewReleaseRequested += this.OnViewReleaseRequested;
+            else if (target is IScreenState screen)
+                screen.Closed += this.OnScreenClosed;
+            if (this.View is Window window)
+                window.Closed += this.OnWindowClosed;
+            if (target is IViewLifecycleAware && this.View is FrameworkElement element)
+            {
+                element.Loaded += this.OnLoaded;
+                if (element.IsLoaded)
+                    this.OnLoaded(element, new RoutedEventArgs(FrameworkElement.LoadedEvent));
+            }
+        }
+
+        private void OnLoaded(object sender, RoutedEventArgs e)
+        {
+            if (Volatile.Read(ref this.released) == 0 && this.model.TryGetTarget(out object target) && target is IViewLifecycleAware lifecycle)
+                lifecycle.ViewLoaded();
+        }
+
+        private void OnViewReleaseRequested(object sender, EventArgs e) => this.Release();
+
+        private void OnScreenClosed(object sender, CloseEventArgs e) => this.Release();
+
+        private void OnWindowClosed(object sender, EventArgs e) => this.Release();
+
+        public void Release()
+        {
+            if (Interlocked.Exchange(ref this.released, 1) != 0)
+                return;
+
+            if (this.model.TryGetTarget(out object target))
+            {
+                if (target is IViewLifecycleAware lifecycle)
+                    lifecycle.ViewReleaseRequested -= this.OnViewReleaseRequested;
+                else if (target is IScreenState screen)
+                    screen.Closed -= this.OnScreenClosed;
+                if (this.owner.views.TryGetValue(target, out ViewBinding current) && ReferenceEquals(current, this))
+                    this.owner.views.Remove(target);
+            }
+
+            // 코어의 종료를 UI 스레드 대기로 막지 않습니다. 지연된 Loaded는 released로 차단합니다.
+            if (this.View.Dispatcher.CheckAccess())
+                this.DetachViewEvents();
+            else
+                this.View.Dispatcher.BeginInvoke(new Action(this.DetachViewEvents));
+        }
+
+        private void DetachViewEvents()
+        {
+            if (this.View is FrameworkElement element)
+                element.Loaded -= this.OnLoaded;
+            if (this.View is Window window)
+                window.Closed -= this.OnWindowClosed;
         }
     }
 }
