@@ -54,7 +54,7 @@
                 <ItemsControl.ItemTemplate>
                     <DataTemplate>
                         <Button Content="{Binding Label}" Width="85" Height="25" Margin="0,0,10,0"
-                                Command="{s:Action ButtonClicked}" CommandParameter="{Binding Value}">
+                                Click="OnButtonClick" Tag="{Binding Value}">
                             <Button.IsDefault>
                                 <MultiBinding Converter="{x:Static s:EqualityConverter.Instance}">
                                     <Binding/>

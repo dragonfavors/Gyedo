@@ -2,4 +2,7 @@
   <PropertyGroup>
     <TargetFramework>net8.0-windows</TargetFramework>
   </PropertyGroup>
+  <ItemGroup>
+    <Compile Include="$(MSBuildThisFileDirectory)Common\DelegateCommand.cs" Link="Support\DelegateCommand.cs" />
+  </ItemGroup>
 </Project>

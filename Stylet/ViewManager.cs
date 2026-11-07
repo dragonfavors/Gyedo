@@ -61,7 +61,7 @@ public class ViewManagerConfig
 }
 
 /// <summary>
-/// Default implementation of ViewManager. Responsible for locating, creating, and settings up Views. Also owns the View.Model and View.ActionTarget attached properties
+/// Default implementation of ViewManager. Responsible for locating, creating, and setting up Views for View.Model.
 /// </summary>
 public class ViewManager : IViewManager
 {
@@ -194,8 +194,6 @@ public class ViewManager : IViewManager
     /// <returns>Newly created View, bound to the given ViewModel</returns>
     protected virtual UIElement CreateAndBindViewForModel(object model)
     {
-        // Need to bind before we initialize the view
-        // Otherwise e.g. the Command bindings get evaluated (by InitializeComponent) but the ActionTarget hasn't been set yet
         logger.Info("Instantiating and binding a new View to ViewModel {0}", model);
         UIElement view = this.CreateViewForModel(model);
         this.BindViewToModel(view, model);
@@ -314,9 +312,6 @@ public class ViewManager : IViewManager
     /// <param name="viewModel">ViewModel to bind the View to</param>
     public virtual void BindViewToModel(UIElement view, object viewModel)
     {
-        logger.Info("Setting {0}'s ActionTarget to {1}", view, viewModel);
-        View.SetActionTarget(view, viewModel);
-
         if (view is FrameworkElement viewAsFrameworkElement)
         {
             logger.Info("Setting {0}'s DataContext to {1}", view, viewModel);

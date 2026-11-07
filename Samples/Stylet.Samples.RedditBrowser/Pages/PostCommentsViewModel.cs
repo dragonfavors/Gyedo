@@ -1,10 +1,15 @@
-﻿using Stylet.Samples.RedditBrowser.RedditApi;
+﻿using Stylet.Examples;
+using System.Windows.Input;
+using Stylet.Samples.RedditBrowser.RedditApi;
 using System;
 
 namespace Stylet.Samples.RedditBrowser.Pages;
 
 public class PostCommentsViewModel : Screen
 {
+    private DelegateCommand goBackCommand;
+    public ICommand GoBackCommand => this.goBackCommand ?? (this.goBackCommand = new DelegateCommand(this, this.GoBack));
+
     private readonly IRedditClient client;
 
     public string Subreddit { get; set; }

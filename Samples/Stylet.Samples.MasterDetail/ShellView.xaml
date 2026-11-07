@@ -5,7 +5,7 @@
         Title="ShellView" Height="200" Width="400">
     <DockPanel>
         <DockPanel DockPanel.Dock="Left">
-            <Button DockPanel.Dock="Bottom" Command="{s:Action AddEmployee}">Hire Employee</Button>
+            <Button DockPanel.Dock="Bottom" Command="{Binding AddEmployeeCommand}">Hire Employee</Button>
             
             <ListBox DockPanel.Dock="Top" Width="200" ItemsSource="{Binding Employees}" SelectedItem="{Binding SelectedEmployee}" HorizontalContentAlignment="Stretch">
                 <ListBox.ItemTemplate>
@@ -13,7 +13,7 @@
                         <DockPanel LastChildFill="False">
                             <TextBlock DockPanel.Dock="Left">Name: </TextBlock>
                             <TextBlock DockPanel.Dock="Left" Text="{Binding Name}"/>
-                            <Button DockPanel.Dock="Right" Command="{s:Action RemoveEmployee}" CommandParameter="{Binding}">Fire</Button>
+                            <Button DockPanel.Dock="Right" Command="{Binding DataContext.RemoveEmployeeCommand, RelativeSource={RelativeSource AncestorType=ListBox}}" CommandParameter="{Binding}">Fire</Button>
                         </DockPanel>
                     </DataTemplate>
                 </ListBox.ItemTemplate>

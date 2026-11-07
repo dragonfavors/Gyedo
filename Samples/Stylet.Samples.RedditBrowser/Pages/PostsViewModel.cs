@@ -1,4 +1,6 @@
-﻿using Stylet.Samples.RedditBrowser.RedditApi;
+﻿using Stylet.Examples;
+using System.Windows.Input;
+using Stylet.Samples.RedditBrowser.RedditApi;
 using System;
 using System.Diagnostics;
 
@@ -6,6 +8,21 @@ namespace Stylet.Samples.RedditBrowser.Pages;
 
 public class PostsViewModel : Screen
 {
+    private DelegateCommand closeCommand;
+    public ICommand CloseCommand => this.closeCommand ?? (this.closeCommand = new DelegateCommand(this, this.Close));
+
+    private DelegateCommand nextCommand;
+    public ICommand NextCommand => this.nextCommand ?? (this.nextCommand = new DelegateCommand(this, this.Next, () => this.CanNext));
+
+    private DelegateCommand prevCommand;
+    public ICommand PrevCommand => this.prevCommand ?? (this.prevCommand = new DelegateCommand(this, this.Prev, () => this.CanPrev));
+
+    private DelegateCommand openSelectedCommand;
+    public ICommand OpenSelectedCommand => this.openSelectedCommand ?? (this.openSelectedCommand = new DelegateCommand(this, this.OpenSelected, () => this.CanOpenSelected));
+
+    private DelegateCommand openSelectedCommentsCommand;
+    public ICommand OpenSelectedCommentsCommand => this.openSelectedCommentsCommand ?? (this.openSelectedCommentsCommand = new DelegateCommand(this, this.OpenSelectedComments, () => this.CanOpenSelectedComments));
+
     public event EventHandler<PostCommentsOpenedEventArgs> PostCommentsOpened;
 
     private readonly IRedditClient client;

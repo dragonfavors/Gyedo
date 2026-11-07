@@ -7,7 +7,7 @@
              mc:Ignorable="d" 
              d:DesignHeight="300" d:DesignWidth="300">
     <DockPanel>
-        <Button DockPanel.Dock="Top" HorizontalAlignment="Left" Command="{s:Action Close}">Close</Button>
+        <Button DockPanel.Dock="Top" HorizontalAlignment="Left" Command="{Binding CloseCommand}">Close</Button>
         
         <Grid DockPanel.Dock="Bottom">
             <Grid.ColumnDefinitions>
@@ -16,13 +16,13 @@
                 <ColumnDefinition/>
                 <ColumnDefinition/>
             </Grid.ColumnDefinitions>
-            <Button Grid.Column="0" Command="{s:Action Prev}" HorizontalAlignment="Left">Prev</Button>
-            <Button Grid.Column="1" Command="{s:Action OpenSelected}" HorizontalAlignment="Center">Open Link</Button>
-            <Button Grid.Column="2" Command="{s:Action OpenSelectedComments}" HorizontalAlignment="Center">Open Comments</Button>
-            <Button Grid.Column="3" Command="{s:Action Next}" HorizontalAlignment="Right">Next</Button>
+            <Button Grid.Column="0" Command="{Binding PrevCommand}" HorizontalAlignment="Left">Prev</Button>
+            <Button Grid.Column="1" Command="{Binding OpenSelectedCommand}" HorizontalAlignment="Center">Open Link</Button>
+            <Button Grid.Column="2" Command="{Binding OpenSelectedCommentsCommand}" HorizontalAlignment="Center">Open Comments</Button>
+            <Button Grid.Column="3" Command="{Binding NextCommand}" HorizontalAlignment="Right">Next</Button>
         </Grid>
 
-        <ListBox ItemsSource="{Binding PostCollection.Posts}" SelectedItem="{Binding SelectedPost}" MouseDoubleClick="{s:Action OpenSelected}">
+        <ListBox ItemsSource="{Binding PostCollection.Posts}" SelectedItem="{Binding SelectedPost}" MouseDoubleClick="OnPostDoubleClick">
             <ListBox.ItemTemplate>
                 <DataTemplate>
                     <DockPanel>

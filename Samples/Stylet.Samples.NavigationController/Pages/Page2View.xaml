@@ -11,7 +11,7 @@
         <StackPanel>
             <TextBlock>This is page 2</TextBlock>
             <TextBlock Text="{Binding Initiator, StringFormat='You got here from {0}'}"/>
-            <Button Command="{s:Action NavigateToPage1}">Go to page 1</Button>
+            <Button Command="{Binding NavigateToPage1Command}">Go to page 1</Button>
         </StackPanel>
     </Grid>
 </UserControl>

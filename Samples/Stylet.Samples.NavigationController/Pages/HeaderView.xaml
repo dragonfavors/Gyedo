@@ -9,7 +9,7 @@
              d:DesignHeight="450" d:DesignWidth="800">
     <StackPanel Orientation="Horizontal">
         <TextBlock>Go to: </TextBlock>
-        <Button Margin="5,0" Command="{s:Action NavigateToPage1}">Page 1</Button>
-        <Button Margin="5,0" Command="{s:Action NavigateToPage2}">Page 2</Button>
+        <Button Margin="5,0" Command="{Binding NavigateToPage1Command}">Page 1</Button>
+        <Button Margin="5,0" Command="{Binding NavigateToPage2Command}">Page 2</Button>
     </StackPanel>
 </UserControl>

@@ -1,10 +1,18 @@
-﻿using System;
+﻿using Stylet.Examples;
+using System.Windows.Input;
+using System;
 using System.Linq;
 
 namespace Stylet.Samples.MasterDetail;
 
 public class ShellViewModel : Screen
 {
+    private DelegateCommand addEmployeeCommand;
+    public ICommand AddEmployeeCommand => this.addEmployeeCommand ?? (this.addEmployeeCommand = new DelegateCommand(this, this.AddEmployee));
+
+    private DelegateCommand removeEmployeeCommand;
+    public ICommand RemoveEmployeeCommand => this.removeEmployeeCommand ?? (this.removeEmployeeCommand = new DelegateCommand(this, parameter => this.RemoveEmployee((EmployeeModel)parameter)));
+
     public IObservableCollection<EmployeeModel> Employees { get; private set; }
 
     private EmployeeModel _selectedEmployee;

@@ -1,4 +1,6 @@
-﻿using FluentValidation;
+﻿using Stylet.Examples;
+using System.Windows.Input;
+using FluentValidation;
 using System;
 using System.Collections.Generic;
 
@@ -6,6 +8,9 @@ namespace Stylet.Samples.ModelValidation.Pages;
 
 public class UserViewModel : Screen
 {
+    private DelegateCommand submitCommand;
+    public ICommand SubmitCommand => this.submitCommand ?? (this.submitCommand = new DelegateCommand(this, this.Submit, () => this.CanSubmit));
+
     private readonly IWindowManager windowManager;
 
     public string UserName { get; set; }

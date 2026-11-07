@@ -1,4 +1,6 @@
-﻿using Stylet;
+﻿using Stylet.Examples;
+using System.Windows.Input;
+using Stylet;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -10,6 +12,21 @@ namespace StyletIntegrationTests
 {
     public class ShellViewModel : Screen
     {
+        private DelegateCommand showDialogAndDialogResultCommand;
+        public ICommand ShowDialogAndDialogResultCommand => this.showDialogAndDialogResultCommand ?? (this.showDialogAndDialogResultCommand = new DelegateCommand(this, this.ShowDialogAndDialogResult));
+
+        private DelegateCommand showWindowLifecycleCommand;
+        public ICommand ShowWindowLifecycleCommand => this.showWindowLifecycleCommand ?? (this.showWindowLifecycleCommand = new DelegateCommand(this, this.ShowWindowLifecycle));
+
+        private DelegateCommand throwExceptionCommand;
+        public ICommand ThrowExceptionCommand => this.throwExceptionCommand ?? (this.throwExceptionCommand = new DelegateCommand(this, this.ThrowException));
+
+        private DelegateCommand testDispatcherCommand;
+        public ICommand TestDispatcherCommand => this.testDispatcherCommand ?? (this.testDispatcherCommand = new DelegateCommand(this, this.TestDispatcher));
+
+        private DelegateCommand showCommandExecutedCommand;
+        public ICommand ShowCommandExecutedCommand => this.showCommandExecutedCommand ?? (this.showCommandExecutedCommand = new DelegateCommand(this, this.ShowCommandExecuted));
+
         private readonly IWindowManager windowManager;
 
         public ShellViewModel(IWindowManager windowManager)
@@ -66,7 +83,7 @@ namespace StyletIntegrationTests
                 this.windowManager.ShowMessageBox("Failure");
         }
 
-        public void ShowActionTargetSaved()
+        public void ShowCommandExecuted()
         {
             this.windowManager.ShowMessageBox("Success!");
         }

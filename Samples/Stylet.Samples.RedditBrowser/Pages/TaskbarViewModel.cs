@@ -1,4 +1,6 @@
-﻿using Stylet.Samples.RedditBrowser.Events;
+﻿using Stylet.Examples;
+using System.Windows.Input;
+using Stylet.Samples.RedditBrowser.Events;
 using Stylet.Samples.RedditBrowser.RedditApi;
 using System;
 using System.Collections.Generic;
@@ -7,6 +9,9 @@ namespace Stylet.Samples.RedditBrowser.Pages;
 
 public class TaskbarViewModel : Screen
 {
+    private DelegateCommand openCommand;
+    public ICommand OpenCommand => this.openCommand ?? (this.openCommand = new DelegateCommand(this, this.Open, () => this.CanOpen));
+
     private readonly IEventAggregator events;
 
     public string Subreddit { get; set; }

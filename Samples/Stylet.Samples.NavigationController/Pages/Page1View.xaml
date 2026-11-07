@@ -10,7 +10,7 @@
     <Grid HorizontalAlignment="Center" VerticalAlignment="Center">
         <StackPanel>
             <TextBlock>This is page 1</TextBlock>
-            <Button Command="{s:Action NavigateToPage2}">Go to page 2</Button>
+            <Button Command="{Binding NavigateToPage2Command}">Go to page 2</Button>
         </StackPanel>
     </Grid>
 </UserControl>

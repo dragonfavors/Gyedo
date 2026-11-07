@@ -17,5 +17,6 @@
     <PackageReference Include="NUnit3TestAdapter" Version="3.12.0" />
     <PackageReference Include="Microsoft.NET.Test.Sdk" Version="15.9.0" />
     <ProjectReference Include="..\Stylet\Stylet.csproj" />
+    <Compile Include="..\Samples\Common\DelegateCommand.cs" Link="Support\DelegateCommand.cs" />
   </ItemGroup>
 </Project>

@@ -9,7 +9,7 @@
     <DockPanel LastChildFill="False">
         <DockPanel DockPanel.Dock="Top">
             <Label DockPanel.Dock="Left">Subreddit: /r/</Label>
-            <Button DockPanel.Dock="Right" Command="{s:Action Open}" IsDefault="True">Open</Button>
+            <Button DockPanel.Dock="Right" Command="{Binding OpenCommand}" IsDefault="True">Open</Button>
             <ComboBox DockPanel.Dock="Right" ItemsSource="{Binding SortModes}" DisplayMemberPath="Name" SelectedItem="{Binding SelectedSortMode}"/>
             <TextBox Text="{Binding Subreddit, UpdateSourceTrigger=PropertyChanged}"/>
         </DockPanel>

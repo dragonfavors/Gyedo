@@ -327,18 +327,6 @@ public class ViewManagerTests
     }
 
     [Test]
-    public void BindViewToModelSetsActionTarget()
-    {
-        var view = new UIElement();
-        object model = new();
-        var viewManager = new AccessibleViewManager(this.config);
-
-        viewManager.BindViewToModel(view, model);
-
-        Assert.AreEqual(model, View.GetActionTarget(view));
-    }
-
-    [Test]
     public void BindViewToModelSetsDataContext()
     {
         var view = new FrameworkElement();

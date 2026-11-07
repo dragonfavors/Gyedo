@@ -1,6 +1,13 @@
 Stylet Changelog
 ================
 
+Unreleased
+----------
+
+ - Remove the XAML Action extension, its command/event implementations, and View.ActionTarget (breaking change).
+ - Keep View.Model and screen/conductor lifecycle management; migrate examples to explicit ICommand bindings.
+ - Handle built-in message box button clicks directly in the view.
+
 v1.3.7
 ------
 

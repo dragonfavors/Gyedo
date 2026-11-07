@@ -1,4 +1,6 @@
-﻿using System;
+﻿using Stylet.Examples;
+using System.Windows.Input;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -8,6 +10,9 @@ namespace Stylet.Samples.NavigationController.Pages;
 
 public class Page1ViewModel : Screen
 {
+    private DelegateCommand navigateToPage2Command;
+    public ICommand NavigateToPage2Command => this.navigateToPage2Command ?? (this.navigateToPage2Command = new DelegateCommand(this, this.NavigateToPage2));
+
     private readonly INavigationController navigationController;
 
     public Page1ViewModel(INavigationController navigationController)

@@ -43,14 +43,6 @@ public class ViewTests
     }
 
     [Test]
-    public void ActionTargetStores()
-    {
-        var obj = new DependencyObject();
-        View.SetActionTarget(obj, 5);
-        Assert.AreEqual(5, View.GetActionTarget(obj));
-    }
-
-    [Test]
     public void ModelStores()
     {
         var obj = new FrameworkElement();

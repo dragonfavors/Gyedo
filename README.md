@@ -1,78 +1,75 @@
-![Project Icon](StyletIcon.png) Stylet
-======================================
+# ![프로젝트 아이콘](StyletIcon.png) Stylet.MvvmToolkit
 
-[![NuGet](https://img.shields.io/nuget/v/Stylet.svg)](https://www.nuget.org/packages/Stylet/)
-[![Build status](https://ci.appveyor.com/api/projects/status/nqucthach0x6gkil?svg=true)](https://ci.appveyor.com/project/canton7/stylet)
+[Stylet](https://github.com/canton7/Stylet)을 기반으로, 화면 관리 기능을 유지하면서 구조와 사용 방식을 단순화하는 포크입니다.
 
-Introduction
-------------
+## 원본 Stylet
 
-Stylet is a small but powerful ViewModel-first MVVM framework for WPF (.NET 4.5.2+ and .NET Core 3.0+), which allows you to write maintainable and extensible code in a way which is easy to test.
-Stylet's aims are to:
+Stylet은 Antony Male이 만든 WPF용 ViewModel 중심 MVVM 프레임워크입니다. Caliburn.Micro에서 영향을 받았으며, 테스트와 확장이 쉬운 애플리케이션을 만드는 것을 목표로 합니다.
 
- - Solve the blockers, niggles, and annoyances which hamper MVVM development without a framework, using simple but powerful concepts.
- - Be obvious to people picking up your project for the first time: there's very little magic
- - Be easy to verify/validate. The LOC count is low, and it comes with a very comprehensive test suite. The code is well-written and well-documented.
- - Be flexible while providing sensible defaults. Almost any part of the framework can be overridden if you wish, but you probably won't want to.
+주요 기능은 다음과 같습니다.
 
-It is inspired by [Caliburn.Micro](http://caliburnmicro.com/), and shares many of its concepts, but removes most of the magic (replacing it with more powerful alternatives), and simplifies parts considerably by targeting only MVVM, WPF and .NET 4.5.2.
+- `Screen`: 화면의 활성화·비활성화·종료와 수명주기 관리
+- `Conductor`: 여러 화면의 관리와 탐색
+- `ViewManager`, `View.Model`: ViewModel에 대응하는 View 탐색·생성·연결
+- `WindowManager`: 창, 대화상자, 메시지 박스 표시
+- 속성 변경 알림, 데이터 검증, 메시징, 자체 IoC 컨테이너
+- XAML Action을 통한 ViewModel 메서드 호출
 
+원본 자료:
 
-Getting Started
----------------
+- [소스 코드](https://github.com/canton7/Stylet)
+- [문서 및 사용 방법](https://github.com/canton7/Stylet/wiki)
+- [NuGet 패키지](https://www.nuget.org/packages/Stylet/)
 
-### .NET 5.0+ / .NET Core
+## 이 저장소의 방향
 
-For .NET Core and .NET 5.0+ projects, the quickest way to get started is by using `dotnet new` with Stylet's template.
+**기존 화면 관리 기능을 유지하고, 프레임워크의 책임과 사용 방식을 단순화합니다.**
 
-Open a command window where you want to create your new project, and install the Stylet templates using:
+그 첫 단계로 XAML Action 계열과 `View.ActionTarget`을 제거했습니다. 메서드 이름을 해석하고 호출 대상을 추적하던 자체 연결 계층을 줄이고, WPF의 명시적인 명령 바인딩과 이벤트 처리를 사용합니다.
 
+CommunityToolkit.Mvvm 통합은 계획 중이며, 아직 적용되지 않았습니다. Action 제거는 단순화를 위한 작업입니다.
+
+## 원본과의 차이
+
+아래 비교는 이 저장소가 기반으로 삼은 원본 코드와 현재 코드를 기준으로 합니다.
+
+| 항목 | 원본 Stylet | 이 저장소 |
+|---|---|---|
+| 화면 수명주기와 탐색 | `Screen`, `Conductor` 사용 | 유지 |
+| View 탐색·생성·연결 | `ViewManager`, `View.Model` 사용 | 유지 |
+| 창·대화상자 관리 | `WindowManager` 사용 | 유지 |
+| 속성 알림·검증·메시징·IoC | Stylet 자체 구현 사용 | 유지 |
+| 명령 연결 | `{s:Action Save}`로 메서드 호출 가능 | `ICommand` 속성에 일반 WPF 바인딩 사용 |
+| 명령 실행 조건 | Action에서 `CanSave` 같은 이름 규칙 해석 | 명령의 `CanExecute`와 `CanExecuteChanged`로 명시 |
+| 이벤트 연결 | Action으로 이벤트를 메서드에 연결 가능 | View 이벤트 처리기 등으로 명시 |
+| 호출 대상 지정 | `View.ActionTarget` 제공 | 제거 |
+| 기본 메시지 박스 | Action으로 버튼 클릭 처리 | View의 버튼 이벤트로 처리 |
+| 샘플 | Action 사용 예제 포함 | 일반 명령 바인딩과 이벤트 처리로 수정 |
+| README | 영어 | 한국어로 원본과 변경 사항 안내 |
+
+## 기존 코드 사용 시 차이
+
+Action 제거는 기존 사용 코드와 호환되지 않는 변경입니다. 다음처럼 명령 속성에 바인딩해야 합니다.
+
+```xml
+<!-- 원본의 Action 사용 방식 -->
+<Button Command="{s:Action Save}" />
+
+<!-- 이 저장소의 명령 바인딩 방식 -->
+<Button Command="{Binding SaveCommand}" />
 ```
-dotnet new -i Stylet.Templates
-```
 
-Then create a new .NET 5.0 project with:
+`SaveCommand`의 구현과 실행 조건 갱신은 애플리케이션에서 담당합니다. [샘플의 DelegateCommand](Samples/Common/DelegateCommand.cs)는 예제와 테스트용이며, 라이브러리 API로 제공하지 않습니다.
 
-```
-dotnet new stylet -n MyStyletProject
-```
+원본 문서의 화면 관리 설명은 참고할 수 있지만, Action과 `View.ActionTarget` 예제는 이 저장소에 적용되지 않습니다. 원본 NuGet 패키지에도 이 포크의 변경 사항이 포함된 것으로 간주해서는 안 됩니다.
 
-(changing `MyStyletProject` as appropriate).
+현재 사용 예제는 [Samples](Samples), 변경 이력은 [CHANGELOG.txt](CHANGELOG.txt)를 참고하세요.
 
-If you want to create a .NET Core 3.1 project, then:
+## 라이선스와 저작권
 
-```
-dotnet new stylet -F netcoreapp3.1 -n MyStyletProject
-```
+원본과 동일한 [MIT 라이선스](LICENSE.txt)를 따릅니다.
 
-If you want to set up your project manually, install the [Stylet](https://www.nuget.org/packages/Stylet) package, then follow the instructions in the [Quick Start](https://github.com/canton7/Stylet/wiki/Quick-Start).
+- 원본 저작권: Copyright (c) 2014 Antony Male
+- 이 저장소의 추가 저작권: Copyright (c) 2026 dragonfavors
 
-Stylet requires .NET 5.0+ or .NET Core 3.0+.
-
-
-### .NET Framework (<= .NET 4)
-
-For .NET Framework projects, the quickest way to get started is to create a new "WPF Application" project, then install the NuGet package [Stylet.Start](https://www.nuget.org/packages/Stylet.Start).
-This will install Stylet, and set up a simple skeleton project.
-
-See [Quick Start](https://github.com/canton7/Stylet/wiki/Quick-Start) for more details.
-
-If you want to set up your project manually, install the [Stylet](https://www.nuget.org/packages/Stylet) package, then follow the instructions in the [Quick Start](https://github.com/canton7/Stylet/wiki/Quick-Start).
-
-Stylet requires .NET 4.5.2 (Visual Studio 2012 or higher).
-
-
-Documentation
--------------
-
-[The Wiki is the documentation source](https://github.com/canton7/Stylet/wiki).
-There's loads of information there - go and have a look, or start with the [Quick Start](https://github.com/canton7/Stylet/wiki/Quick-Start).
-
-
-Contributing
-------------
-
-Contributions are always welcome.
-If you've got a problem or a question, [raise an issue](https://github.com/canton7/Stylet/issues).
-If you've got code you want to contribute, please read [the Contributing guidelines](https://github.com/canton7/Stylet/wiki/Contributing) first of all.
-Create a feature branch off the `develop` branch, add your changes there, and submit it as a pull request.
+원본의 라이선스와 저작권 고지를 유지합니다.

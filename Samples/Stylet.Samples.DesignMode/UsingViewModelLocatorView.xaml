@@ -14,10 +14,10 @@
             <LineBreak/><LineBreak/>
             Intellisense on bindings works, and dummy values from the ViewModel are displayed.
             <LineBreak/><LineBreak/>
-            Note that View.ActionTarget has not been set, and so the Button's enabled proeprty does not reflect the CanDoSomething guard property in the ViewModel.
+            The button binds to DoSomethingCommand, whose CanExecute reflects CanDoSomething in the ViewModel.
         </TextBlock>
 
         <TextBlock DockPanel.Dock="Top" Text="{Binding TextBoxText}"/>
-        <Button DockPanel.Dock="Top" Command="{s:Action DoSomething}">Button</Button>
+        <Button DockPanel.Dock="Top" Command="{Binding DoSomethingCommand}">Button</Button>
     </DockPanel>
 </UserControl>

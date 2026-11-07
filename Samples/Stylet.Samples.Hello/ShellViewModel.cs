@@ -1,9 +1,14 @@
-﻿using System;
+﻿using Stylet.Examples;
+using System.Windows.Input;
+using System;
 
 namespace Stylet.Samples.Hello;
 
 public class ShellViewModel : Screen
 {
+    private DelegateCommand sayHelloCommand;
+    public ICommand SayHelloCommand => this.sayHelloCommand ?? (this.sayHelloCommand = new DelegateCommand(this, this.SayHello, () => this.CanSayHello));
+
     private readonly IWindowManager windowManager;
 
     private string _name;

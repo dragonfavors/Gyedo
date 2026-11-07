@@ -9,7 +9,7 @@
              mc:Ignorable="d" 
              d:DesignHeight="300" d:DesignWidth="300">
     <DockPanel>
-        <Button DockPanel.Dock="Top" HorizontalAlignment="Left" Command="{s:Action GoBack}">Back</Button>
+        <Button DockPanel.Dock="Top" HorizontalAlignment="Left" Command="{Binding GoBackCommand}">Back</Button>
         <uc:StretchingTreeView ItemsSource="{Binding CommentCollection.Comments}" ScrollViewer.HorizontalScrollBarVisibility="Disabled">
             <uc:StretchingTreeView.Resources>
                 <Style TargetType="uc:StretchingTreeViewItem">

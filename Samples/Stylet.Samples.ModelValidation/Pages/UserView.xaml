@@ -68,6 +68,6 @@
         <PasswordBox Grid.Row="4" Grid.Column="1" x:Name="PasswordConfirmation" xaml:Secure.Password="{Binding PasswordConfirmation, UpdateSourceTrigger=PropertyChanged}"/>
         
         <CheckBox Grid.Row="5" Grid.Column="0" IsChecked="{Binding ShouldAutoValidate}">Auto-Validate</CheckBox>
-        <Button Grid.Row="5" Grid.Column="1" Command="{s:Action Submit}" HorizontalAlignment="Left">Submit</Button>
+        <Button Grid.Row="5" Grid.Column="1" Command="{Binding SubmitCommand}" HorizontalAlignment="Left">Submit</Button>
     </Grid>
 </UserControl>

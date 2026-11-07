@@ -17,38 +17,6 @@ public static class View
     public const string ViewManagerResourceKey = "b9a38199-8cb3-4103-8526-c6cfcd089df7";
 
     /// <summary>
-    /// Initial value of the ActionTarget property.
-    /// This can be used as a marker - if the property has this value, it hasn't yet been assigned to anything else.
-    /// </summary>
-    public static readonly object InitialActionTarget = new();
-
-    /// <summary>
-    /// Get the ActionTarget associated with the given object
-    /// </summary>
-    /// <param name="obj">Object to fetch the ActionTarget for</param>
-    /// <returns>ActionTarget associated with the given object</returns>
-    public static object GetActionTarget(DependencyObject obj)
-    {
-        return obj.GetValue(ActionTargetProperty);
-    }
-
-    /// <summary>
-    /// Set the ActionTarget associated with the given object
-    /// </summary>
-    /// <param name="obj">Object to set the ActionTarget for</param>
-    /// <param name="value">Value to set the ActionTarget to</param>
-    public static void SetActionTarget(DependencyObject obj, object value)
-    {
-        obj.SetValue(ActionTargetProperty, value);
-    }
-
-    /// <summary>
-    /// The object's ActionTarget. This is used to determine what object to call Actions on by the ActionExtension markup extension.
-    /// </summary>
-    public static readonly DependencyProperty ActionTargetProperty =
-        DependencyProperty.RegisterAttached("ActionTarget", typeof(object), typeof(View), new FrameworkPropertyMetadata(InitialActionTarget, FrameworkPropertyMetadataOptions.Inherits));
-
-    /// <summary>
     /// Fetch the ViewModel currently associated with a given object
     /// </summary>
     /// <param name="obj">Object to fetch the ViewModel for</param>

@@ -16,6 +16,7 @@
 
   <ItemGroup>
     <Compile Include="**\*.cs" Exclude="obj\**" />
+    <Compile Include="..\Samples\Common\DelegateCommand.cs" Link="Support\DelegateCommand.cs" />
     <None Remove="**\*.cs" />
 
     <ApplicationDefinition Include="App.xaml">

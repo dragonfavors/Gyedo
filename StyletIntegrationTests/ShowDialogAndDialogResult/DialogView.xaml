@@ -9,6 +9,6 @@
             <Label>DialogResult: </Label>
             <ComboBox ItemsSource="{Binding DesiredResult}" SelectedItem="{Binding SelectedDesiredResult}"/>
         </StackPanel>
-        <Button DockPanel.Dock="Bottom" HorizontalAlignment="Center" Command="{s:Action Close}" Width="100">Close</Button>
+        <Button DockPanel.Dock="Bottom" HorizontalAlignment="Center" Command="{Binding CloseCommand}" Width="100">Close</Button>
     </DockPanel>
 </Window>
