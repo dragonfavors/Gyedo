@@ -1,3 +1,4 @@
+using CommunityToolkit.Mvvm.ComponentModel;
 using NUnit.Framework;
 using Stylet;
 using Stylet.Examples;
@@ -7,13 +8,13 @@ namespace StyletUnitTests;
 [TestFixture]
 public class ExampleCommandTests
 {
-    private class Model : PropertyChangedBase
+    private class Model : ObservableObject
     {
         private bool enabled;
         public bool Enabled
         {
             get => this.enabled;
-            set => this.SetAndNotify(ref this.enabled, value);
+            set => this.SetProperty(ref this.enabled, value);
         }
     }
 

@@ -20,7 +20,6 @@ public class LabelledValueTests
     {
         var lbv = new LabelledValue<float>();
 
-        lbv.PropertyChangedDispatcher = a => a();
         var changedProperties = new List<string>();
         lbv.PropertyChanged += (o, e) => changedProperties.Add(e.PropertyName);
 

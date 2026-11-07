@@ -1,13 +1,14 @@
-﻿using System;
+﻿using CommunityToolkit.Mvvm.ComponentModel;
+using System;
 
 namespace Stylet.Samples.MasterDetail;
 
-public class EmployeeModel : PropertyChangedBase
+public class EmployeeModel : ObservableObject
 {
     private string _name;
     public string Name
     {
         get => this._name;
-        set => this.SetAndNotify(ref this._name, value);
+        set => this.SetProperty(ref this._name, value);
     }
 }

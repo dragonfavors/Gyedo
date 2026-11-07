@@ -51,7 +51,7 @@ public abstract class ConductorBaseWithActiveItem<T> : ConductorBase<T>, IHaveAc
                 ScreenExtensions.TryDeactivate(newItem);
         }
 
-        this.NotifyOfPropertyChange(nameof(this.ActiveItem));
+        this.OnPropertyChanged(nameof(this.ActiveItem));
     }
 
     /// <summary>

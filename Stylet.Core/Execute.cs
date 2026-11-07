@@ -24,7 +24,7 @@ public static class Execute
     }
 
     /// <summary>
-    /// Gets or sets the default dispatcher used by PropertyChanged events.
+    /// ValidatingModelBase와 Screen에서 사용하는 기본 속성 알림 디스패처입니다.
     /// 기본값은 호출한 스레드에서 동기 실행합니다.
     /// </summary>
     public static Action<Action> DefaultPropertyChangedDispatcher { get; set; }

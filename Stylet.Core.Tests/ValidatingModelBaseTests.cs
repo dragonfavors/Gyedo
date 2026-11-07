@@ -21,7 +21,7 @@ public class ValidatingModelBaseTests
         public int IntProperty
         {
             get => this._intProperty;
-            set => this.SetAndNotify(ref this._intProperty, value);
+            set => this.SetProperty(ref this._intProperty, value);
         }
 
         public new bool AutoValidate

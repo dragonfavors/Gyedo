@@ -1,26 +1,16 @@
-﻿using Stylet.Examples;
-using System.Windows.Input;
-using System;
+﻿using CommunityToolkit.Mvvm.ComponentModel;
+using CommunityToolkit.Mvvm.Input;
 
 namespace Stylet.Samples.Hello;
 
-public class ShellViewModel : Screen
+public partial class ShellViewModel : Screen
 {
-    private DelegateCommand sayHelloCommand;
-    public ICommand SayHelloCommand => this.sayHelloCommand ?? (this.sayHelloCommand = new DelegateCommand(this, this.SayHello, () => this.CanSayHello));
-
     private readonly IWindowManager windowManager;
 
-    private string _name;
-    public string Name
-    {
-        get => this._name;
-        set
-        {
-            this.SetAndNotify(ref this._name, value);
-            this.NotifyOfPropertyChange(() => this.CanSayHello);
-        }
-    }
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(CanSayHello))]
+    [NotifyCanExecuteChangedFor(nameof(SayHelloCommand))]
+    private string name;
 
     public ShellViewModel(IWindowManager windowManager)
     {
@@ -29,6 +19,8 @@ public class ShellViewModel : Screen
     }
 
     public bool CanSayHello => !string.IsNullOrEmpty(this.Name);
+
+    [RelayCommand(CanExecute = nameof(CanSayHello))]
     public void SayHello()
     {
         this.windowManager.ShowMessageBox($"Hello, {this.Name}");

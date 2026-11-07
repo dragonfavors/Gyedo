@@ -1,4 +1,5 @@
-﻿using System;
+﻿using CommunityToolkit.Mvvm.ComponentModel;
+using System;
 using System.Collections.Generic;
 
 namespace Stylet;
@@ -7,7 +8,7 @@ namespace Stylet;
 /// Key-value pair useful for attaching labels to objects and displaying them in the view
 /// </summary>
 /// <typeparam name="T">Type of the value</typeparam>
-public class LabelledValue<T> : PropertyChangedBase, IEquatable<LabelledValue<T>>
+public class LabelledValue<T> : ObservableObject, IEquatable<LabelledValue<T>>
 {
     private string _label;
 
@@ -17,7 +18,7 @@ public class LabelledValue<T> : PropertyChangedBase, IEquatable<LabelledValue<T>
     public string Label
     {
         get => this._label;
-        set => this.SetAndNotify(ref this._label, value);
+        set => this.SetProperty(ref this._label, value);
     }
 
     private T _value;
@@ -28,7 +29,7 @@ public class LabelledValue<T> : PropertyChangedBase, IEquatable<LabelledValue<T>
     public T Value
     {
         get => this._value;
-        set => this.SetAndNotify(ref this._value, value);
+        set => this.SetProperty(ref this._value, value);
     }
 
     /// <summary>

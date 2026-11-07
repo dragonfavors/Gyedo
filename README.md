@@ -27,13 +27,13 @@ Stylet은 Antony Male이 만든 WPF용 ViewModel 중심 MVVM 프레임워크입�
 
 그 첫 단계로 XAML Action 계열과 `View.ActionTarget`을 제거했습니다. 메서드 이름을 해석하고 호출 대상을 추적하던 자체 연결 계층을 줄이고, WPF의 명시적인 명령 바인딩과 이벤트 처리를 사용합니다.
 
-공통 코어와 WPF 구현을 분리해 추후 Avalonia 어댑터를 추가할 수 있는 구조로 정리했습니다. CommunityToolkit.Mvvm 통합과 Avalonia 지원은 아직 적용되지 않았습니다. Action 제거는 단순화를 위한 작업입니다.
+공통 코어와 WPF 구현을 분리하고, 공통 코어에 CommunityToolkit.Mvvm 8.4.2를 통합했습니다. 자체 `PropertyChangedBase`를 제거하고 Toolkit의 속성 알림 API로 통일했습니다. Avalonia 어댑터는 아직 구현하지 않았습니다.
 
 ## 프로젝트 구조
 
 | 프로젝트 | 대상 | 역할 |
 |---|---|---|
-| [Stylet.Core](Stylet.Core/Stylet.Core.csproj) | `net10.0` | 화면 수명주기·탐색, 속성 알림·검증, 컬렉션, 메시징, IoC, 로깅, 디스패처 계약 |
+| [Stylet.Core](Stylet.Core/Stylet.Core.csproj) | `net10.0` | Toolkit 기반 속성 알림, 화면 수명주기·탐색, 검증, 컬렉션, 메시징, IoC, 로깅, 디스패처 계약 |
 | [Stylet — WPF 구현](Stylet/Stylet.csproj) | `net10.0-windows` | View 연결, `View.Model`, 창·메시지 박스, 앱 초기화, WPF Dispatcher·디자인 모드 |
 | [공통 테스트](Stylet.Core.Tests/Stylet.Core.Tests.csproj) | `net10.0` | WPF 없이 공통 동작 검증 |
 | [WPF 테스트](StyletUnitTests/StyletUnitTests.csproj) | `net10.0-windows` | WPF 연결과 창 동작 검증 |
@@ -55,15 +55,16 @@ WPF 프로젝트가 코어를 참조합니다. 코어는 WPF나 Avalonia를 참�
 | 화면 수명주기와 탐색 | `Screen`, `Conductor` 사용 | 유지 |
 | View 탐색·생성·연결 | `ViewManager`, `View.Model` 사용 | 유지 |
 | 창·대화상자 관리 | `WindowManager` 사용 | 유지 |
-| 속성 알림·검증·메시징·IoC | Stylet 자체 구현 사용 | 유지 |
+| 속성 알림 | 자체 `PropertyChangedBase`, `SetAndNotify` 사용 | Toolkit의 `ObservableObject`, `SetProperty`, `[ObservableProperty]` 사용 |
+| 검증·메시징·IoC | Stylet 자체 구현 사용 | 유지 |
 | 이전 버전 호환 API | 폐기 예정 별칭과 동기 종료 확인 API 포함 | 제거하고 현행 API로 통일 |
 | 구형 설치·배포 파일 | .NET Framework용 `Stylet.Start` 설치 스크립트 등 포함 | 제거하고 .NET 10 라이브러리·템플릿 패키지 유지 |
-| 명령 연결 | `{s:Action Save}`로 메서드 호출 가능 | `ICommand` 속성에 일반 WPF 바인딩 사용 |
+| 명령 연결 | `{s:Action Save}`로 메서드 호출 가능 | Toolkit 명령 또는 `ICommand` 속성에 일반 바인딩 사용 |
 | 명령 실행 조건 | Action에서 `CanSave` 같은 이름 규칙 해석 | 명령의 `CanExecute`와 `CanExecuteChanged`로 명시 |
 | 이벤트 연결 | Action으로 이벤트를 메서드에 연결 가능 | View 이벤트 처리기 등으로 명시 |
 | 호출 대상 지정 | `View.ActionTarget` 제공 | 제거 |
 | 기본 메시지 박스 | Action으로 버튼 클릭 처리 | View의 버튼 이벤트로 처리 |
-| 샘플 | Action 사용 예제 포함 | 일반 명령 바인딩과 이벤트 처리로 수정 |
+| 샘플 | Action 사용 예제 포함 | Hello는 Toolkit 생성 속성·명령 사용, 나머지는 일반 명령 바인딩과 이벤트 처리 사용 |
 | README | 영어 | 한국어로 원본과 변경 사항 안내 |
 
 ## 기존 코드 사용 시 차이
@@ -90,7 +91,47 @@ Action 제거는 기존 사용 코드와 호환되지 않는 변경입니다. �
 <Button Command="{Binding SaveCommand}" />
 ```
 
-`SaveCommand`의 구현과 실행 조건 갱신은 애플리케이션에서 담당합니다. [샘플의 DelegateCommand](Samples/Common/DelegateCommand.cs)는 예제와 테스트용이며, 라이브러리 API로 제공하지 않습니다.
+`SaveCommand`는 Toolkit의 `[RelayCommand]`로 생성하거나 직접 구현할 수 있습니다. 생성 속성과 명령의 연동은 [Hello 샘플](Samples/Stylet.Samples.Hello/ShellViewModel.cs)을 참고하세요. 다른 샘플에 남아 있는 [DelegateCommand](Samples/Common/DelegateCommand.cs)는 예제·테스트용이며, 라이브러리 API로 제공하지 않습니다.
+
+### Toolkit 속성 알림
+
+현재 상속 구조는 `ObservableObject → ValidatingModelBase → Screen → Conductor`입니다. 검증이 필요 없는 일반 모델과 `LabelledValue<T>`는 `ObservableObject`를 직접 사용합니다.
+
+특성 기반 생성기를 사용하는 프로젝트에는 다음 패키지 참조를 추가합니다.
+
+```xml
+<PackageReference Include="CommunityToolkit.Mvvm" Version="8.4.2" />
+```
+
+```csharp
+using CommunityToolkit.Mvvm.ComponentModel;
+using Stylet;
+
+public partial class UserViewModel : Screen
+{
+    [ObservableProperty]
+    private string name = "";
+}
+```
+
+위 코드는 변경 알림을 제공하는 `Name` 속성을 생성합니다. `Conductor`를 상속한 ViewModel에서도 사용할 수 있습니다.
+
+| 제거한 API | 사용할 API |
+|---|---|
+| `PropertyChangedBase` | `ObservableObject` 또는 검증이 필요한 경우 `ValidatingModelBase` |
+| `SetAndNotify(ref field, value)` | `SetProperty(ref field, value)` |
+| `NotifyOfPropertyChange(...)` | `OnPropertyChanged(...)` |
+| `NotifyOfPropertyChange(() => Name)` | `OnPropertyChanged(nameof(Name))` |
+| 모델의 `Refresh()` | 파생 클래스에서 `OnPropertyChanged(string.Empty)` 호출 |
+| `OnPropertyChanged(string)` 재정의 | `OnPropertyChanged(PropertyChangedEventArgs)` 재정의 후 `base` 호출 |
+
+`BindableCollection.Refresh()`는 유지합니다. `LabelledValue<T>`에는 별도 알림 디스패처가 없으며, Toolkit의 기본 동기 알림을 사용합니다.
+
+`Screen`과 `ValidatingModelBase`의 `PropertyChangedDispatcher` 및 `Execute.DefaultPropertyChangedDispatcher`는 유지합니다. 생성 속성도 기존 `IModelValidator` 자동·비동기 검증을 거치며, `PropertyChanged`와 `ErrorsChanged` 알림에 같은 디스패처를 사용합니다. 검증 구현을 `ObservableValidator`로 바꾼 것은 아니므로 `Screen`에는 `[NotifyDataErrorInfo]`를 적용할 수 없습니다.
+
+`PropertyChanging`, 생성된 변경 콜백, 명령 상태 갱신은 호출한 스레드에서 실행됩니다. UI 상태를 변경할 때는 필요에 따라 `Execute.OnUIThreadAsync(...)`로 변경 작업 자체를 UI 스레드에서 수행하세요. 기본 알림 디스패처도 호출한 스레드에서 동기 실행합니다.
+
+### 이전 호환 API 정리
 
 폐기 표시가 붙어 있던 호환 API도 제거했습니다. 기존 코드는 다음과 같이 변경해야 합니다.
 

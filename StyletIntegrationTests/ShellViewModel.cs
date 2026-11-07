@@ -42,7 +42,7 @@ namespace StyletIntegrationTests
         public bool? ShowDialogAndDialogResultDialogResult
         {
             get => this._showDialogAndDialogResultDialogResult;
-            set => this.SetAndNotify(ref this._showDialogAndDialogResultDialogResult, value);
+            set => this.SetProperty(ref this._showDialogAndDialogResultDialogResult, value);
         }
 
         public void ShowDialogAndDialogResult()

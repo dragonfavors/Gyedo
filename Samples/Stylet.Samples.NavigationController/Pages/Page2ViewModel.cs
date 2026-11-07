@@ -20,7 +20,7 @@ public class Page2ViewModel : Screen
     public string Initiator
     {
         get => this._initiator;
-        set => this.SetAndNotify(ref this._initiator, value);
+        set => this.SetProperty(ref this._initiator, value);
     }
 
     public Page2ViewModel(INavigationController navigationController)

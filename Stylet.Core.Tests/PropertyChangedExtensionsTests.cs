@@ -1,4 +1,5 @@
-﻿using NUnit.Framework;
+﻿using CommunityToolkit.Mvvm.ComponentModel;
+using NUnit.Framework;
 using Stylet;
 using System;
 
@@ -7,25 +8,25 @@ namespace StyletUnitTests;
 [TestFixture]
 public class PropertyChangedExtensionsTests
 {
-    private class NotifyingClass : PropertyChangedBase
+    private class NotifyingClass : ObservableObject
     {
         private string _foo;
         public string Foo
         {
             get => this._foo;
-            set => this.SetAndNotify(ref this._foo, value);
+            set => this.SetProperty(ref this._foo, value);
         }
 
         private string _bar;
         public string Bar
         {
             get => this._bar;
-            set => this.SetAndNotify(ref this._bar, value);
+            set => this.SetProperty(ref this._bar, value);
         }
 
         public void NotifyAll()
         {
-            this.NotifyOfPropertyChange(string.Empty);
+            this.OnPropertyChanged(string.Empty);
         }
     }
 

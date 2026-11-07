@@ -4,6 +4,9 @@ Stylet Changelog
 Unreleased
 ----------
 
+ - 공통 코어에 CommunityToolkit.Mvvm 8.4.2를 통합하고 PropertyChangedBase를 제거합니다(호환성 변경).
+ - 속성 알림을 SetProperty/OnPropertyChanged로 통일하고, 기존 검증·디스패처와 Toolkit 생성 속성을 연결합니다.
+ - Hello 샘플에 ObservableProperty와 RelayCommand를 적용합니다.
  - 공통 화면 관리 코드를 Stylet.Core(net10.0)로 분리하고 기존 Stylet은 WPF 구현으로 유지합니다.
  - Screen의 WPF View 연결·캐시를 ViewManager로 이동하고 공통 View 로딩 알림을 분리합니다(호환성 변경).
  - 공통 테스트를 WPF 없이 실행하는 별도 프로젝트로 분리합니다.

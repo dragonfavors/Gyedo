@@ -1,4 +1,5 @@
-﻿using System;
+﻿using CommunityToolkit.Mvvm.ComponentModel;
+using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.ComponentModel;
@@ -13,8 +14,16 @@ namespace Stylet;
 /// <summary>
 /// Base for ViewModels which require property validation
 /// </summary>
-public class ValidatingModelBase : PropertyChangedBase, INotifyDataErrorInfo
+public class ValidatingModelBase : ObservableObject, INotifyDataErrorInfo, INotifyPropertyChangedDispatcher
 {
+    /// <summary>
+    /// PropertyChanged와 ErrorsChanged 알림의 전달 방법입니다.
+    /// 기본값은 생성 시점의 Execute.DefaultPropertyChangedDispatcher를 사용합니다.
+    /// </summary>
+    [System.Xml.Serialization.XmlIgnore]
+    [System.Text.Json.Serialization.JsonIgnore]
+    public virtual Action<Action> PropertyChangedDispatcher { get; set; } = Execute.DefaultPropertyChangedDispatcher;
+
     /// <summary>
     /// Occurs when the validation errors have changed for a property or for the entire entity.
     /// </summary>
@@ -291,27 +300,28 @@ public class ValidatingModelBase : PropertyChangedBase, INotifyDataErrorInfo
     }
 
     /// <summary>
-    /// Raise a PropertyChanged notification for the named property, and validate that property if this.validation is set and this.autoValidate is true
+    /// Toolkit의 수동 속성과 생성 속성에서 발생한 알림을 전달하고 자동 검증을 실행합니다.
     /// </summary>
-    /// <param name="propertyName">Name of the property which has changed</param>
+    /// <param name="e">변경된 속성의 알림 정보입니다.</param>
     [EditorBrowsable(EditorBrowsableState.Never)]
-    protected override async void OnPropertyChanged(string propertyName)
+    protected override async void OnPropertyChanged(PropertyChangedEventArgs e)
     {
-        base.OnPropertyChanged(propertyName);
+        ArgumentNullException.ThrowIfNull(e);
+        this.PropertyChangedDispatcher(() => base.OnPropertyChanged(e));
 
         // Save ourselves a little bit of work every time HasErrors is fired as the result of 
         // the validation results changing.
-        if (this.Validator != null && this.AutoValidate && propertyName != "HasErrors")
-            await this.ValidatePropertyAsync(propertyName);
+        if (this.Validator != null && this.AutoValidate && e.PropertyName != nameof(this.HasErrors))
+            await this.ValidatePropertyAsync(e.PropertyName);
     }
 
     /// <summary>
-    /// Called whenever the error state of any properties changes. Calls NotifyOfPropertyChange("HasErrors") by default
+    /// Called whenever the error state of any properties changes. Calls OnPropertyChanged("HasErrors") by default
     /// </summary>
     /// <param name="changedProperties">List of property names which have changed validation state</param>
     protected virtual void OnValidationStateChanged(IEnumerable<string> changedProperties)
     {
-        this.NotifyOfPropertyChange(nameof(this.HasErrors));
+        this.OnPropertyChanged(nameof(this.HasErrors));
         foreach (string property in changedProperties)
         {
             this.RaiseErrorsChanged(property);

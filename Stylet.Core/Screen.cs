@@ -38,7 +38,7 @@ public class Screen : ValidatingModelBase, IScreen, IViewLifecycleAware
     public string DisplayName
     {
         get => this._displayName;
-        set => this.SetAndNotify(ref this._displayName, value);
+        set => this.SetProperty(ref this._displayName, value);
     }
 
     #endregion
@@ -55,8 +55,8 @@ public class Screen : ValidatingModelBase, IScreen, IViewLifecycleAware
         get => this._screenState;
         protected set
         {
-            this.SetAndNotify(ref this._screenState, value);
-            this.NotifyOfPropertyChange(nameof(this.IsActive));
+            this.SetProperty(ref this._screenState, value);
+            this.OnPropertyChanged(nameof(this.IsActive));
         }
     }
 
@@ -218,7 +218,7 @@ public class Screen : ValidatingModelBase, IScreen, IViewLifecycleAware
     public object Parent
     {
         get => this._parent;
-        set => this.SetAndNotify(ref this._parent, value);
+        set => this.SetProperty(ref this._parent, value);
     }
 
     #endregion

@@ -16,7 +16,7 @@ public class ShellViewModel : Screen
     public string NameString
     {
         get => this._nameString;
-        set => this.SetAndNotify(ref this._nameString, value);
+        set => this.SetProperty(ref this._nameString, value);
     }
 
     public ShellViewModel(IWindowManager windowManager, IDialogFactory dialogFactory)

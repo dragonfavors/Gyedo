@@ -19,7 +19,7 @@ public class ShellViewModel : Screen
     public EmployeeModel SelectedEmployee
     {
         get => this._selectedEmployee;
-        set => this.SetAndNotify(ref this._selectedEmployee, value);
+        set => this.SetProperty(ref this._selectedEmployee, value);
     }
 
     public ShellViewModel()

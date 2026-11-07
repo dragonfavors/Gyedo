@@ -25,7 +25,7 @@ public class UserViewModel : Screen
         set
         {
             base.AutoValidate = value;
-            this.NotifyOfPropertyChange();
+            this.OnPropertyChanged();
         }
     }
 
@@ -42,7 +42,7 @@ public class UserViewModel : Screen
     {
         base.OnValidationStateChanged(changedProperties);
         // Fody can't weave other assemblies, so we have to manually raise this
-        this.NotifyOfPropertyChange(() => this.CanSubmit);
+        this.OnPropertyChanged(nameof(this.CanSubmit));
     }
 
     public bool CanSubmit => !this.ShouldAutoValidate || !this.HasErrors;
