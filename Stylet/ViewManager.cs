@@ -1,4 +1,4 @@
-﻿using Stylet.Logging;
+using Stylet.Logging;
 using Stylet.Xaml;
 using System;
 using System.Collections.Generic;
@@ -417,10 +417,13 @@ public class ViewManager : IViewManager
             }
         }
 
-        private void OnLoaded(object sender, RoutedEventArgs e)
+        private async void OnLoaded(object sender, RoutedEventArgs e)
         {
             if (Volatile.Read(ref this.released) == 0 && this.model.TryGetTarget(out object target) && target is IViewLifecycleAware lifecycle)
-                lifecycle.ViewLoaded();
+            {
+                try { await lifecycle.ViewLoadedAsync(); }
+                catch (Exception exception) { logger.Error(exception, "View loading failed"); }
+            }
         }
 
         private void OnViewReleaseRequested(object sender, EventArgs e) => this.Release();

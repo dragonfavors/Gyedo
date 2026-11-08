@@ -1,3 +1,4 @@
+using System.Threading;
 using Moq;
 using NUnit.Framework;
 using Stylet;
@@ -88,12 +89,12 @@ public class SampleToolkitTests
         var collection = new PostCollection(api.Object, "dotnet", "hot");
         await collection.LoadAsync();
         var client = new Mock<IRedditClient>();
-        client.Setup(x => x.GetPostsAsync("dotnet", SortMode.Hot)).ReturnsAsync(collection);
+        client.Setup(x => x.GetPostsAsync("dotnet", SortMode.Hot, It.IsAny<CancellationToken>())).ReturnsAsync(collection);
         var model = new PostsViewModel(client.Object) { Subreddit = "dotnet", SortMode = SortMode.Hot };
         int previousChanges = 0;
         model.PrevCommand.CanExecuteChanged += (_, _) => previousChanges++;
 
-        ((IScreenState)model).Activate();
+        await ((IScreenState)model).ActivateAsync(CancellationToken.None);
         Assert.That(model.NextCommand.CanExecute(null), Is.True);
         Assert.That(model.PrevCommand.CanExecute(null), Is.False);
         Task execution = model.NextCommand.ExecuteAsync(null);

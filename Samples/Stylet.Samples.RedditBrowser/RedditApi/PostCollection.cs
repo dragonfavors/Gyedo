@@ -1,4 +1,5 @@
-﻿using Stylet.Samples.RedditBrowser.RedditApi.Contracts;
+using System.Threading;
+using Stylet.Samples.RedditBrowser.RedditApi.Contracts;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -34,9 +35,9 @@ public class PostCollection
         this.count = count;
     }
 
-    public async Task LoadAsync()
+    public async Task LoadAsync(CancellationToken cancellationToken = default)
     {
-        PostsResponse posts = await this.api.FetchPostsAsync(this.subreddit, this.sortMode);
+        PostsResponse posts = await this.api.FetchPostsAsync(this.subreddit, this.sortMode, cancellationToken);
         this.LoadPostsResponse(posts);
         this.count = this.Posts.Count;
     }
@@ -54,17 +55,17 @@ public class PostCollection
         this.before = posts.Data.Before;
     }
 
-    public async Task<PostCollection> NextAsync()
+    public async Task<PostCollection> NextAsync(CancellationToken cancellationToken = default)
     {
-        PostsResponse posts = await this.api.FetchNextPostsAsync(this.subreddit, this.sortMode, this.after, this.count);
+        PostsResponse posts = await this.api.FetchNextPostsAsync(this.subreddit, this.sortMode, this.after, this.count, cancellationToken);
         var result = new PostCollection(this.api, this.subreddit, this.sortMode, this.count + posts.Data.Children.Count);
         result.LoadPostsResponse(posts);
         return result;
     }
 
-    public async Task<PostCollection> PrevAsync()
+    public async Task<PostCollection> PrevAsync(CancellationToken cancellationToken = default)
     {
-        PostsResponse posts = await this.api.FetchPrevPostsAsync(this.subreddit, this.sortMode, this.before, this.count);
+        PostsResponse posts = await this.api.FetchPrevPostsAsync(this.subreddit, this.sortMode, this.before, this.count, cancellationToken);
         var result = new PostCollection(this.api, this.subreddit, this.sortMode, this.count - posts.Data.Children.Count);
         result.LoadPostsResponse(posts);
         return result;

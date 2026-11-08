@@ -1,4 +1,4 @@
-﻿using System.Collections.Generic;
+using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 
@@ -6,108 +6,66 @@ namespace Stylet;
 
 public partial class Conductor<T>
 {
-    /// <summary>
-    /// Stack-based navigation. A Conductor which has one active item, and a stack of previous items
-    /// </summary>
+    /// <summary>이전 화면을 보관하며 뒤로 탐색할 수 있는 Conductor입니다.</summary>
     public class StackNavigation : ConductorBaseWithActiveItem<T>
     {
-        // We need to remove arbitrary items, so no Stack<T> here!
         private readonly List<T> history = new();
-
-        /// <summary>
-        /// Activate the given item. This deactivates the previous item, and pushes it onto the history stack
-        /// </summary>
-        /// <param name="item">Item to activate</param>
-        public override void ActivateItem(T item)
+        /// <inheritdoc/>
+        public override IEnumerable<T> GetChildren() => this.OwnedItems;
+        /// <inheritdoc/>
+        public override Task<bool> ActivateItemAsync(T item) => this.RunNavigationAsync(async () =>
         {
-            if (item != null && item.Equals(this.ActiveItem))
+            T previous = this.ActiveItem;
+            await this.ChangeActiveItemAsync(item, false);
+            if (previous != null && !ReferenceEquals(previous, item))
             {
-                if (this.IsActive)
-                    ScreenExtensions.TryActivate(this.ActiveItem);
+                this.history.Remove(item);
+                this.history.Add(previous);
+            }
+            return true;
+        });
+        /// <inheritdoc/>
+        public override Task DeactivateItemAsync(T item) => this.RunNavigationAsync(() => ScreenExtensions.TryDeactivateAsync(item));
+        /// <summary>현재 화면을 닫고 이전 화면을 활성화합니다.</summary>
+        public Task<bool> GoBackAsync() => this.CloseItemAsync(this.ActiveItem);
+        /// <summary>이전 화면들의 종료 조건을 확인한 뒤 이력을 비웁니다.</summary>
+        public Task<bool> ClearAsync() => this.RunNavigationAsync(async () =>
+        {
+            if (!await this.CanAllItemsCloseAsync(this.history)) return false;
+            foreach (T item in this.history.ToArray())
+            {
+                await this.CloseAndCleanUpAsync(item, this.DisposeChildren);
+                this.history.Remove(item);
+            }
+            return true;
+        });
+        /// <inheritdoc/>
+        public override Task<bool> CloseItemAsync(T item) => this.CloseOwnedItemAsync(item, async () =>
+        {
+            if (ReferenceEquals(item, this.ActiveItem))
+            {
+                T next = this.history.LastOrDefault();
+                await this.ChangeActiveItemAsync(next, true);
+                if (next != null) this.history.Remove(next);
             }
             else
             {
-                if (this.ActiveItem != null)
-                    this.history.Add(this.ActiveItem);
-                this.ChangeActiveItem(item, false);
-            }
-        }
-
-        /// <summary>
-        /// Deactivate the given item
-        /// </summary>
-        /// <param name="item">Item to deactivate</param>
-        public override void DeactivateItem(T item)
-        {
-            ScreenExtensions.TryDeactivate(item);
-        }
-
-        /// <summary>
-        /// Close the active item, and re-activate the top item in the history stack
-        /// </summary>
-        public void GoBack()
-        {
-            this.CloseItem(this.ActiveItem);
-        }
-
-        /// <summary>
-        /// Close and remove all items in the history stack, leaving the ActiveItem
-        /// </summary>
-        public void Clear()
-        {
-            foreach (T item in this.history)
-            {
-                this.CloseAndCleanUp(item, this.DisposeChildren);
-            }
-            this.history.Clear();
-        }
-
-        /// <summary>
-        /// Close the given item. If it was the ActiveItem, activate the top item in the history stack
-        /// </summary>
-        /// <param name="item">Item to close</param>
-        public override async void CloseItem(T item)
-        {
-            if (item == null || !await this.CanCloseItem(item))
-                return;
-
-            if (item.Equals(this.ActiveItem))
-            {
-                var newItem = default(T);
-                if (this.history.Count > 0)
-                {
-                    newItem = this.history.Last();
-                    this.history.RemoveAt(this.history.Count - 1);
-                }
-                this.ChangeActiveItem(newItem, true);
-            }
-            else if (this.history.Contains(item))
-            {
-                this.CloseAndCleanUp(item, this.DisposeChildren);
+                await this.CloseAndCleanUpAsync(item, this.DisposeChildren);
                 this.history.Remove(item);
             }
-        }
-
-        /// <summary>
-        /// Returns true if and when all items (ActiveItem + everything in the history stack) can close
-        /// </summary>
-        /// <returns>A task indicating whether this conductor can close</returns>
-        public override Task<bool> CanCloseAsync()
+            return true;
+        });
+        /// <inheritdoc/>
+        public override Task<bool> CanCloseAsync() => this.CanAllItemsCloseAsync(this.GetChildren());
+        /// <inheritdoc/>
+        protected override Task OnClosedAsync() => this.RunNavigationAsync(async () =>
         {
-            return this.CanAllItemsCloseAsync(this.history.Concat(new[] { this.ActiveItem }));
-        }
-
-        /// <summary>
-        /// Ensures that all children are closed when this conductor is closed
-        /// </summary>
-        protected override void OnClose()
-        {
-            // We've already been deactivated by this point
-            foreach (T item in this.history)
-                this.CloseAndCleanUp(item, this.DisposeChildren);
-            this.history.Clear();
-
-            this.CloseAndCleanUp(this.ActiveItem, this.DisposeChildren);
-        }
+            foreach (T item in this.GetChildren())
+            {
+                await this.CloseAndCleanUpAsync(item, this.DisposeChildren);
+                this.history.Remove(item);
+                if (ReferenceEquals(item, this.ActiveItem)) this.SetActiveItem(null);
+            }
+        });
     }
 }

@@ -1,4 +1,6 @@
-﻿using Moq;
+using System.Threading.Tasks;
+using System.Threading;
+using Moq;
 using NUnit.Framework;
 using Stylet;
 using System;
@@ -14,9 +16,9 @@ public class MessageBoxTests
 {
     private class MyMessageBoxViewModel : MessageBoxViewModel
     {
-        public new void OnViewLoaded()
+        public new async Task OnViewLoadedAsync()
         {
-            base.OnViewLoaded();
+            await base.OnViewLoadedAsync();
         }
     }
 
@@ -112,25 +114,25 @@ public class MessageBoxTests
     }
 
     [Test]
-    public void SetsResultAndClosesWhenButtonClicked()
+    public async Task SetsResultAndClosesWhenButtonClicked()
     {
         var parent = new Mock<IChildDelegate>();
         this.vm.Parent = parent.Object;
         this.vm.Setup(null, null, MessageBoxButton.OK, MessageBoxImage.None, MessageBoxResult.None, MessageBoxResult.None, null, null, null);
         
-        this.vm.ButtonClicked(MessageBoxResult.No);
+        await this.vm.ButtonClickedAsync(MessageBoxResult.No);
 
-        parent.Verify(x => x.CloseItem(this.vm, true));
+        parent.Verify(x => x.CloseItemAsync(this.vm, true));
         Assert.AreEqual(MessageBoxResult.No, this.vm.ClickedButton);
     }
 
     [Test]
-    public void PlaysNoSoundIfNoSoundToPlay()
+    public async Task PlaysNoSoundIfNoSoundToPlay()
     {
         var vm = new MyMessageBoxViewModel();
         // Can't test it actually playing the sound
         vm.Setup(null, null, MessageBoxButton.OK, MessageBoxImage.None, MessageBoxResult.None, MessageBoxResult.None, null, null, null);
-        Assert.DoesNotThrow(() => vm.OnViewLoaded());
+        Assert.DoesNotThrowAsync(async () => await vm.OnViewLoadedAsync());
     }
 
     [Test]

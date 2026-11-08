@@ -1,4 +1,5 @@
-﻿using System;
+using System.Threading;
+using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
 using RestEase;
@@ -7,8 +8,8 @@ namespace Stylet.Samples.RedditBrowser.RedditApi;
 
 public interface IRedditClient
 {
-    Task<PostCollection> GetPostsAsync(string subreddit, SortMode sortMode);
-    Task<CommentCollection> GetPostComments(string subreddit, string postId36);
+    Task<PostCollection> GetPostsAsync(string subreddit, SortMode sortMode, CancellationToken cancellationToken = default);
+    Task<CommentCollection> GetPostComments(string subreddit, string postId36, CancellationToken cancellationToken = default);
 }
 
 public class RedditClient : IRedditClient
@@ -20,17 +21,17 @@ public class RedditClient : IRedditClient
         this.api = RestClient.For<IRedditApi>("http://reddit.com");
     }
 
-    public async Task<PostCollection> GetPostsAsync(string subreddit, SortMode sortMode)
+    public async Task<PostCollection> GetPostsAsync(string subreddit, SortMode sortMode, CancellationToken cancellationToken = default)
     {
         var postCollection = new PostCollection(this.api, subreddit, sortMode.Mode);
-        await postCollection.LoadAsync();
+        await postCollection.LoadAsync(cancellationToken);
         return postCollection;
     }
 
-    public async Task<CommentCollection> GetPostComments(string subreddit, string postId36)
+    public async Task<CommentCollection> GetPostComments(string subreddit, string postId36, CancellationToken cancellationToken = default)
     {
         var commentCollection = new CommentCollection(this.api, subreddit, postId36);
-        await commentCollection.LoadAsync();
+        await commentCollection.LoadAsync(cancellationToken);
         return commentCollection;
     }
 }

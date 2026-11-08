@@ -1,4 +1,5 @@
-﻿using CommunityToolkit.Mvvm.Input;
+using System.Threading;
+using CommunityToolkit.Mvvm.Input;
 using Stylet;
 using System;
 using System.Collections.Generic;
@@ -30,17 +31,17 @@ namespace StyletIntegrationTests
         }
 
         [RelayCommand]
-        public void ShowDialogAndDialogResult()
+        public async Task ShowDialogAndDialogResult()
         {
             var dialog = new ShowDialogAndDialogResult.DialogViewModel();
-            this.ShowDialogAndDialogResultDialogResult = this.windowManager.ShowDialog(dialog);
+            this.ShowDialogAndDialogResultDialogResult = await this.windowManager.ShowDialogAsync(dialog);
         }
 
         [RelayCommand]
-        public void ShowWindowLifecycle()
+        public async Task ShowWindowLifecycle()
         {
             var window = new WindowLifecycle.WindowViewModel(this.windowManager);
-            this.windowManager.ShowWindow(window);
+            await this.windowManager.ShowWindowAsync(window);
         }
 
         [RelayCommand]
@@ -66,15 +67,15 @@ namespace StyletIntegrationTests
             await Task.Delay(100);
 
             if (log.SequenceEqual(new[] { "One", "Two", "Four", "Three" }))
-                this.windowManager.ShowMessageBox("Success", icon: MessageBoxImage.Information);
+                await this.windowManager.ShowMessageBoxAsync("Success", icon: MessageBoxImage.Information);
             else
-                this.windowManager.ShowMessageBox("Failure");
+                await this.windowManager.ShowMessageBoxAsync("Failure");
         }
 
         [RelayCommand]
-        public void ShowCommandExecuted()
+        public async Task ShowCommandExecuted()
         {
-            this.windowManager.ShowMessageBox("Success!");
+            await this.windowManager.ShowMessageBoxAsync("Success!");
         }
     }
 }

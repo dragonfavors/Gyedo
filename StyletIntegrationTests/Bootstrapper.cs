@@ -1,4 +1,5 @@
-﻿using Microsoft.Extensions.DependencyInjection;
+using System.Threading;
+using Microsoft.Extensions.DependencyInjection;
 using Stylet;
 using Stylet.Logging;
 using System;
@@ -18,14 +19,22 @@ namespace StyletIntegrationTests
             LogManager.Enabled = true;
         }
 
-        protected override void OnUnhandledException(System.Windows.Threading.DispatcherUnhandledExceptionEventArgs e)
+        protected override async void OnUnhandledException(System.Windows.Threading.DispatcherUnhandledExceptionEventArgs e)
         {
             base.OnUnhandledException(e); // Calling this just to trigger some code coverage
             string message = e.Exception.Message;
             if (e.Exception is TargetInvocationException)
                 message = e.Exception.InnerException.Message;
-            this.Services.GetRequiredService<IWindowManager>().ShowMessageBox(string.Format("Unhandled Exception: {0}", message), icon: MessageBoxImage.Error);
             e.Handled = true;
+            try
+            {
+                await this.Services.GetRequiredService<IWindowManager>().ShowMessageBoxAsync(
+                    string.Format("Unhandled Exception: {0}", message), icon: MessageBoxImage.Error);
+            }
+            catch (Exception exception)
+            {
+                LogManager.GetLogger(this.GetType()).Error(exception, "오류 대화상자를 표시하지 못했습니다.");
+            }
         }
     }
 }

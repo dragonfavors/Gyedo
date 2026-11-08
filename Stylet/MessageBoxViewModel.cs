@@ -1,4 +1,6 @@
-﻿using System;
+using System.Threading;
+using System;
+using System.Threading.Tasks;
 using System.Collections.Generic;
 using System.Drawing;
 using System.Linq;
@@ -232,7 +234,7 @@ public class MessageBoxViewModel : Screen, IMessageBoxViewModel
     /// <summary>
     /// When the View loads, play a sound if appropriate
     /// </summary>
-    protected override void OnViewLoaded()
+    protected override async Task OnViewLoadedAsync()
     {
         // There might not be a sound, or it might be null
         SystemSound sound;
@@ -245,9 +247,9 @@ public class MessageBoxViewModel : Screen, IMessageBoxViewModel
     /// Called when MessageBoxView when the user clicks a button
     /// </summary>
     /// <param name="button">Button which was clicked</param>
-    public void ButtonClicked(MessageBoxResult button)
+    public async Task ButtonClickedAsync(MessageBoxResult button)
     {
         this.ClickedButton = button;
-        this.RequestClose(true);
+        await this.RequestCloseAsync(true);
     }
 }

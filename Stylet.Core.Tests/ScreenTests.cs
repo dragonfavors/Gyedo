@@ -1,4 +1,5 @@
-﻿using Moq;
+using System.Threading;
+using Moq;
 using NUnit.Framework;
 using Stylet;
 using System;
@@ -29,47 +30,49 @@ public class ScreenTests
             this.OnCloseCalled = false;
         }
 
-        public new void SetState(ScreenState newState, Action<ScreenState, ScreenState> changedHandler)
-        {
-            base.SetState(newState, changedHandler);
-        }
 
         public bool OnActivateCalled;
-        protected override void OnActivate()
+        protected override Task OnActivatedAsync(CancellationToken cancellationToken)
         {
             this.OnActivateCalled = true;
+            return Task.CompletedTask;
         }
 
         public bool OnInitialActivateCalled;
-        protected override void OnInitialActivate()
+        protected override Task OnInitialActivatedAsync(CancellationToken cancellationToken)
         {
             this.OnInitialActivateCalled = true;
+            return Task.CompletedTask;
         }
 
         public bool OnDeactivateCalled;
-        protected override void OnDeactivate()
+        protected override Task OnDeactivatedAsync()
         {
             this.OnDeactivateCalled = true;
+            return Task.CompletedTask;
         }
 
         public bool OnCloseCalled;
-        protected override void OnClose()
+        protected override Task OnClosedAsync()
         {
             this.OnCloseCalled = true;
+            return Task.CompletedTask;
         }
 
         public ScreenState PreviousState;
         public ScreenState NewState;
-        protected override void OnStateChanged(ScreenState oldState, ScreenState newState)
+        protected override Task OnStateChangedAsync(ScreenState oldState, ScreenState newState)
         {
             this.PreviousState = oldState;
             this.NewState = newState;
+            return Task.CompletedTask;
         }
 
         public bool OnViewLoadedCalled;
-        protected override void OnViewLoaded()
+        protected override Task OnViewLoadedAsync()
         {
             this.OnViewLoadedCalled = true;
+            return Task.CompletedTask;
         }
 
         public bool? CanCloseResult = null;
@@ -112,74 +115,78 @@ public class ScreenTests
     }
 
     [Test]
-    public void ScreenStateChangesNotifyStateAndActivity()
+    public async Task ScreenStateChangesNotifyStateAndActivity()
     {
         var properties = new List<string>();
-        this.screen.PropertyChanged += (sender, args) => properties.Add(args.PropertyName);
+        this.screen.PropertyChanged += (sender, args) =>
+        {
+            if (args.PropertyName == nameof(Screen.ScreenState) || args.PropertyName == nameof(Screen.IsActive))
+                properties.Add(args.PropertyName);
+        };
 
-        ((IScreenState)this.screen).Activate();
+        await this.screen.ActivateAsync();
         CollectionAssert.AreEquivalent(new[] { nameof(Screen.ScreenState), nameof(Screen.IsActive) }, properties);
 
         properties.Clear();
-        ((IScreenState)this.screen).Deactivate();
+        await this.screen.DeactivateAsync();
         CollectionAssert.AreEquivalent(new[] { nameof(Screen.ScreenState), nameof(Screen.IsActive) }, properties);
     }
 
     [Test]
-    public void ActivateActivatesIfNotAlreadyActive()
+    public async Task ActivateActivatesIfNotAlreadyActive()
     {
-        ((IScreenState)this.screen).Activate();
+        await this.screen.ActivateAsync();
         Assert.IsTrue(this.screen.IsActive);
     }
 
     [Test]
-    public void ActivateFiresActivatedEvent()
+    public async Task ActivateFiresActivatedEvent()
     {
         bool fired = false;
         this.screen.Activated += (o, e) => fired = true;
-        ((IScreenState)this.screen).Activate();
+        await this.screen.ActivateAsync();
         Assert.IsTrue(fired);
     }
 
     [Test]
-    public void ActivateCallsOnActivate()
+    public async Task ActivateCallsOnActivate()
     {
-        ((IScreenState)this.screen).Activate();
+        await this.screen.ActivateAsync();
         Assert.IsTrue(this.screen.OnActivateCalled);
     }
 
     [Test]
-    public void DoubleActivationDoesntActivate()
+    public async Task DoubleActivationDoesntActivate()
     {
-        ((IScreenState)this.screen).Activate();
+        await this.screen.ActivateAsync();
         this.screen.OnActivateCalled = false;
-        ((IScreenState)this.screen).Activate();
+        await this.screen.ActivateAsync();
         Assert.IsFalse(this.screen.OnActivateCalled);
     }
 
     [Test]
-    public void InitialActivationCallsOnInitialActivate()
+    public async Task InitialActivationCallsOnInitialActivate()
     {
-        ((IScreenState)this.screen).Activate();
+        await this.screen.ActivateAsync();
         this.screen.OnInitialActivateCalled = false;
-        ((IScreenState)this.screen).Deactivate();
-        ((IScreenState)this.screen).Activate();
+        await this.screen.DeactivateAsync();
+        await this.screen.ActivateAsync();
         Assert.IsFalse(this.screen.OnInitialActivateCalled);
     }
 
     [Test]
-    public void ActivateFiresCorrectEvents()
+    public async Task ActivateFiresCorrectEvents()
     {
         // Get the initial activate out of the way
-        ((IScreenState)this.screen).Activate();
-        this.screen.SetState(ScreenState.Deactivated, (n, o) => { });
+        await this.screen.ActivateAsync();
+        await this.screen.DeactivateAsync();
         
         var changedEventArgs = new List<ScreenStateChangedEventArgs>();
         this.screen.StateChanged += (o, e) => changedEventArgs.Add(e);
         var activatedEventArgs = new List<ActivationEventArgs>();
         this.screen.Activated += (o, e) => activatedEventArgs.Add(e);
 
-        ((IScreenState)this.screen).Activate();
+        await this.screen.ActivateAsync();
 
         Assert.AreEqual(1, changedEventArgs.Count);
         Assert.AreEqual(ScreenState.Active, changedEventArgs[0].NewState);
@@ -194,14 +201,14 @@ public class ScreenTests
     }
 
     [Test]
-    public void InitialActivateFiresCorrectEvents()
+    public async Task InitialActivateFiresCorrectEvents()
     {
         var changedEventArgs = new List<ScreenStateChangedEventArgs>();
         this.screen.StateChanged += (o, e) => changedEventArgs.Add(e);
         var activatedEventArgs = new List<ActivationEventArgs>();
         this.screen.Activated += (o, e) => activatedEventArgs.Add(e);
 
-        ((IScreenState)this.screen).Activate();
+        await this.screen.ActivateAsync();
 
         Assert.AreEqual(1, changedEventArgs.Count);
         Assert.AreEqual(ScreenState.Active, changedEventArgs[0].NewState);
@@ -216,52 +223,52 @@ public class ScreenTests
     }
 
     [Test]
-    public void DeactivateDeactivates()
+    public async Task DeactivateDeactivates()
     {
-        ((IScreenState)this.screen).Activate(); ;
-        ((IScreenState)this.screen).Deactivate();
+        await this.screen.ActivateAsync(); ;
+        await this.screen.DeactivateAsync();
         Assert.IsFalse(this.screen.IsActive);
     }
 
     [Test]
-    public void DeactivateFiredDeactivatedEvent()
+    public async Task DeactivateFiredDeactivatedEvent()
     {
         bool fired = false;
         this.screen.Deactivated += (o, e) => fired = true;
-        ((IScreenState)this.screen).Activate(); ;
-        ((IScreenState)this.screen).Deactivate();
+        await this.screen.ActivateAsync(); ;
+        await this.screen.DeactivateAsync();
         Assert.IsTrue(fired);
     }
 
     [Test]
-    public void DeactivateCallsOnDeactivate()
+    public async Task DeactivateCallsOnDeactivate()
     {
-        ((IScreenState)this.screen).Activate();
-        ((IScreenState)this.screen).Deactivate();
+        await this.screen.ActivateAsync();
+        await this.screen.DeactivateAsync();
         Assert.IsTrue(this.screen.OnDeactivateCalled);
     }
 
     [Test]
-    public void DoubleDeactivationDoesntDeactivate()
+    public async Task DoubleDeactivationDoesntDeactivate()
     {
-        ((IScreenState)this.screen).Activate();
-        ((IScreenState)this.screen).Deactivate();
+        await this.screen.ActivateAsync();
+        await this.screen.DeactivateAsync();
         this.screen.OnDeactivateCalled = false;
-        ((IScreenState)this.screen).Deactivate();
+        await this.screen.DeactivateAsync();
         Assert.IsFalse(this.screen.OnDeactivateCalled);
     }
 
     [Test]
-    public void DeactivateFiresCorrectEvents()
+    public async Task DeactivateFiresCorrectEvents()
     {
-        this.screen.SetState(ScreenState.Active, (n, o) => { });
+        await this.screen.ActivateAsync();
 
         var changedEventArgs = new List<ScreenStateChangedEventArgs>();
         this.screen.StateChanged += (o, e) => changedEventArgs.Add(e);
         var deactivationEventArgs = new List<DeactivationEventArgs>();
         this.screen.Deactivated += (o, e) => deactivationEventArgs.Add(e);
 
-        ((IScreenState)this.screen).Deactivate();
+        await this.screen.DeactivateAsync();
 
         Assert.AreEqual(1, changedEventArgs.Count);
         Assert.AreEqual(ScreenState.Deactivated, changedEventArgs[0].NewState);
@@ -275,49 +282,49 @@ public class ScreenTests
     }
 
     [Test]
-    public void CloseDeactivates()
+    public async Task CloseDeactivates()
     {
-        ((IScreenState)this.screen).Activate();
-        ((IScreenState)this.screen).Close();
+        await this.screen.ActivateAsync();
+        await this.screen.CloseAsync();
         Assert.IsTrue(this.screen.OnDeactivateCalled);
     }
 
     [Test]
-    public void CloseFiresClosed()
+    public async Task CloseFiresClosed()
     {
         bool fired = false;
         this.screen.Closed += (o, e) => fired = true;
-        ((IScreenState)this.screen).Close();
+        await this.screen.CloseAsync();
         Assert.IsTrue(fired);
     }
 
     [Test]
-    public void CloseCallsOnClose()
+    public async Task CloseCallsOnClose()
     {
-        ((IScreenState)this.screen).Close();
+        await this.screen.CloseAsync();
         Assert.IsTrue(this.screen.OnCloseCalled);
     }
 
     [Test]
-    public void DoubleCloseDoesNotClose()
+    public async Task DoubleCloseDoesNotClose()
     {
-        ((IScreenState)this.screen).Close();
+        await this.screen.CloseAsync();
         this.screen.OnCloseCalled = false;
-        ((IScreenState)this.screen).Close();
+        await this.screen.CloseAsync();
         Assert.IsFalse(this.screen.OnCloseCalled);
     }
 
     [Test]
-    public void CloseFiresCorrectEvents()
+    public async Task CloseFiresCorrectEvents()
     {
-        this.screen.SetState(ScreenState.Deactivated, (n, o) => { });
+        await this.screen.DeactivateAsync();
 
         var changedEventArgs = new List<ScreenStateChangedEventArgs>();
         this.screen.StateChanged += (o, e) => changedEventArgs.Add(e);
         var closeEventArgs = new List<CloseEventArgs>();
         this.screen.Closed += (o, e) => closeEventArgs.Add(e);
 
-        ((IScreenState)this.screen).Close();
+        await this.screen.CloseAsync();
 
         Assert.AreEqual(1, changedEventArgs.Count);
         Assert.AreEqual(ScreenState.Closed, changedEventArgs[0].NewState);
@@ -331,19 +338,19 @@ public class ScreenTests
     }
 
     [Test]
-    public void ActivatingAllowsScreenToBeClosedAgain()
+    public async Task ActivatingAllowsScreenToBeClosedAgain()
     {
-        ((IScreenState)this.screen).Close();
+        await this.screen.CloseAsync();
         this.screen.OnCloseCalled = false;
-        ((IScreenState)this.screen).Activate();
-        ((IScreenState)this.screen).Close();
+        await this.screen.ActivateAsync();
+        await this.screen.CloseAsync();
         Assert.IsTrue(this.screen.OnCloseCalled);
     }
 
     [Test]
-    public void ViewLoadedNotifiesWithoutActivatingScreen()
+    public async Task ViewLoadedNotifiesWithoutActivatingScreen()
     {
-        ((IViewLifecycleAware)this.screen).ViewLoaded();
+        await ((IViewLifecycleAware)this.screen).ViewLoadedAsync();
 
         Assert.IsTrue(this.screen.OnViewLoadedCalled);
         Assert.AreEqual(ScreenState.Deactivated, this.screen.ScreenState);
@@ -380,19 +387,19 @@ public class ScreenTests
     }
 
     [Test]
-    public void RequestCloseThrowsIfParentIsNotIChildDelegate()
+    public async Task RequestCloseThrowsIfParentIsNotIChildDelegate()
     {
         this.screen.Parent = new object();
-        Assert.Throws<InvalidOperationException>(() => this.screen.RequestClose());
+        Assert.ThrowsAsync<InvalidOperationException>(async () => await this.screen.RequestCloseAsync());
     }
 
     [Test]
-    public void RequestCloseCallsParentCloseItemPassingDialogResult()
+    public async Task RequestCloseCallsParentCloseItemPassingDialogResult()
     {
         var parent = new Mock<IChildDelegate>();
         this.screen.Parent = parent.Object;
-        this.screen.RequestClose(true);
-        parent.Verify(x => x.CloseItem(this.screen, true));
+        await this.screen.RequestCloseAsync(true);
+        parent.Verify(x => x.CloseItemAsync(this.screen, true));
     }
 
     [Test]
@@ -404,33 +411,34 @@ public class ScreenTests
     }
 
     [Test]
-    public void InitialActivateFiredWhenComingFromDeactivated()
+    public async Task InitialActivateFiredWhenComingFromDeactivated()
     {
-        ((IScreenState)this.screen).Deactivate();
-        ((IScreenState)this.screen).Activate();
+        await this.screen.DeactivateAsync();
+        await this.screen.ActivateAsync();
         Assert.True(this.screen.OnInitialActivateCalled);
     }
 
     [Test]
-    public void ClosingResetsInitialActivate()
+    public async Task ClosingResetsInitialActivate()
     {
-        ((IScreenState)this.screen).Activate();
+        await this.screen.ActivateAsync();
         this.screen.OnInitialActivateCalled = false;
-        ((IScreenState)this.screen).Close();
-        ((IScreenState)this.screen).Activate();
+        await this.screen.CloseAsync();
+        await this.screen.ActivateAsync();
         Assert.True(this.screen.OnInitialActivateCalled);
     }
 
     [Test]
-    public void DeactivateAfterCloseCausesActivate()
+    public async Task DeactivateAfterCloseIsNoOp()
     {
-        ((IScreenState)this.screen).Activate();
-        ((IScreenState)this.screen).Close();
+        await this.screen.ActivateAsync();
+        await this.screen.CloseAsync();
         this.screen.Reset();
 
-        ((IScreenState)this.screen).Deactivate();
-        Assert.True(this.screen.OnInitialActivateCalled);
-        Assert.True(this.screen.OnActivateCalled);
-        Assert.True(this.screen.OnDeactivateCalled);
+        await this.screen.DeactivateAsync();
+        Assert.False(this.screen.OnInitialActivateCalled);
+        Assert.False(this.screen.OnActivateCalled);
+        Assert.False(this.screen.OnDeactivateCalled);
+        Assert.That(this.screen.ScreenState, Is.EqualTo(ScreenState.Closed));
     }
 }

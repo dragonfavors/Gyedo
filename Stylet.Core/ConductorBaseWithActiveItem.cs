@@ -1,80 +1,73 @@
-﻿using System.Collections.Generic;
+using System.Collections.Generic;
+using System.Threading;
+using System.Threading.Tasks;
 
 namespace Stylet;
 
-/// <summary>
-/// Base class for all conductors which had a single active item
-/// </summary>
-/// <typeparam name="T">Type of item being conducted</typeparam>
-public abstract class ConductorBaseWithActiveItem<T> : ConductorBase<T>, IHaveActiveItem<T> where T : class
+/// <summary>한 번에 하나의 자식을 선택하는 Conductor 기반입니다.</summary>
+public abstract class ConductorBaseWithActiveItem<T> : ConductorBase<T>, IHaveActiveItem<T>, IActiveItemConductor where T : class
 {
-    private T _activeItem;
-
-    /// <summary>
-    /// Gets or sets the item which is currently active
-    /// </summary>
-    public T ActiveItem
+    private T activeItem;
+    /// <inheritdoc/>
+    public T ActiveItem => this.activeItem;
+    object IActiveItemConductor.ActiveItem => this.ActiveItem;
+    Task<bool> IActiveItemConductor.ActivateItemAsync(object item) =>
+        item == null || item is T ? this.ActivateItemAsync((T)item) : Task.FromResult(false);
+    /// <inheritdoc/>
+    public override IEnumerable<T> GetChildren() => this.OwnedItems;
+    /// <summary>수명주기를 처리한 뒤 선택 속성을 갱신합니다.</summary>
+    protected void SetActiveItem(T item)
     {
-        get => this._activeItem;
-        set => this.ActivateItem(value);
-    }
-
-    /// <summary>
-    /// From IParent, fetch all items
-    /// </summary>
-    /// <returns>Children of this conductor</returns>
-    public override IEnumerable<T> GetChildren()
-    {
-        return new[] { this.ActiveItem };
-    }
-
-    /// <summary>
-    /// Switch the active item to the given item
-    /// </summary>
-    /// <param name="newItem">New item to activate</param>
-    /// <param name="closePrevious">Whether the previously-active item should be closed</param>
-    protected virtual void ChangeActiveItem(T newItem, bool closePrevious)
-    {
-        ScreenExtensions.TryDeactivate(this.ActiveItem);
-        if (closePrevious)
-            this.CloseAndCleanUp(this.ActiveItem, this.DisposeChildren);
-
-        this._activeItem = newItem;
-
-        if (newItem != null)
-        {
-            this.EnsureItem(newItem);
-
-            if (this.IsActive)
-                ScreenExtensions.TryActivate(newItem);
-            else
-                ScreenExtensions.TryDeactivate(newItem);
-        }
-
+        this.activeItem = item;
         this.OnPropertyChanged(nameof(this.ActiveItem));
     }
-
-    /// <summary>
-    /// When we're activated, also activate the ActiveItem
-    /// </summary>
-    protected override void OnActivate()
+    /// <summary>이전 화면을 정리하고 새 화면의 활성화가 끝난 뒤 선택을 확정합니다.</summary>
+    protected virtual async Task ChangeActiveItemAsync(T item, bool closePrevious)
     {
-        ScreenExtensions.TryActivate(this.ActiveItem);
+        T previous = this.ActiveItem;
+        this.ValidateItemOwnership(item);
+        if (ReferenceEquals(previous, item))
+        {
+            if (this.IsActive)
+                await this.ActivateChildAsync(item, this.ActivationCancellationToken);
+            return;
+        }
+        await ScreenExtensions.TryDeactivateAsync(previous);
+        if (closePrevious)
+        {
+            await this.CloseAndCleanUpAsync(previous, this.DisposeChildren);
+            this.SetActiveItem(null);
+        }
+        if (item != null)
+        {
+            this.EnsureItem(item);
+            try
+            {
+                if (this.IsActive)
+                    await this.ActivateChildAsync(item, this.ActivationCancellationToken);
+                else
+                    await ScreenExtensions.TryDeactivateAsync(item);
+            }
+            catch
+            {
+                if (!closePrevious && this.IsActive && !this.ActivationCancellationToken.IsCancellationRequested)
+                    await this.ActivateChildAsync(previous, this.ActivationCancellationToken);
+                throw;
+            }
+        }
+        this.SetActiveItem(item);
     }
-
-    /// <summary>
-    /// When we're deactivated, also deactivate the ActiveItem
-    /// </summary>
-    protected override void OnDeactivate()
+    /// <inheritdoc/>
+    protected override Task OnActivatedAsync(CancellationToken cancellationToken) =>
+        this.RunNavigationAsync(() => this.ActivateChildAsync(this.ActiveItem, cancellationToken));
+    /// <inheritdoc/>
+    protected override Task OnDeactivatedAsync() =>
+        this.RunNavigationAsync(() => ScreenExtensions.TryDeactivateAsync(this.ActiveItem));
+    /// <inheritdoc/>
+    protected override Task OnClosedAsync() => this.RunNavigationAsync(async () =>
     {
-        ScreenExtensions.TryDeactivate(this.ActiveItem);
-    }
-
-    /// <summary>
-    /// When we're closed, also close the ActiveItem
-    /// </summary>
-    protected override void OnClose()
-    {
-        this.CloseAndCleanUp(this.ActiveItem, this.DisposeChildren);
-    }
+        foreach (T item in this.OwnedItems)
+            await this.CloseAndCleanUpAsync(item, this.DisposeChildren);
+        this.SetActiveItem(null);
+    });
 }

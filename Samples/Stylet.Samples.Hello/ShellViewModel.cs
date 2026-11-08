@@ -1,4 +1,6 @@
-﻿using CommunityToolkit.Mvvm.ComponentModel;
+using System.Threading;
+using System.Threading.Tasks;
+using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 
 namespace Stylet.Samples.Hello;
@@ -21,8 +23,8 @@ public partial class ShellViewModel : Screen
     public bool CanSayHello => !string.IsNullOrEmpty(this.Name);
 
     [RelayCommand(CanExecute = nameof(CanSayHello))]
-    public void SayHello()
+    public async Task SayHello()
     {
-        this.windowManager.ShowMessageBox($"Hello, {this.Name}");
+        await this.windowManager.ShowMessageBoxAsync($"Hello, {this.Name}");
     }
 }

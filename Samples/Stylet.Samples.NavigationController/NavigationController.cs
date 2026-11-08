@@ -1,4 +1,4 @@
-﻿using Stylet.Samples.NavigationController.Pages;
+using Stylet.Samples.NavigationController.Pages;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -9,13 +9,13 @@ namespace Stylet.Samples.NavigationController;
 
 public interface INavigationController
 {
-    void NavigateToPage1();
-    void NavigateToPage2(string initiator);
+    Task NavigateToPage1Async();
+    Task NavigateToPage2Async(string initiator);
 }
 
 public interface INavigationControllerDelegate
 {
-    void NavigateTo(IScreen screen);
+    Task NavigateToAsync(IScreen screen);
 }
 
 public class NavigationController : INavigationController
@@ -31,15 +31,15 @@ public class NavigationController : INavigationController
         this.page2ViewModelFactory = page2ViewModelFactory ?? throw new ArgumentNullException(nameof(page2ViewModelFactory));
     }
 
-    public void NavigateToPage1()
+    public async Task NavigateToPage1Async()
     {
-        this.Delegate?.NavigateTo(this.page1ViewModelFactory());
+        await this.Delegate.NavigateToAsync(this.page1ViewModelFactory());
     }
 
-    public void NavigateToPage2(string initiator)
+    public async Task NavigateToPage2Async(string initiator)
     {
         Page2ViewModel vm = this.page2ViewModelFactory();
         vm.Initiator = initiator;
-        this.Delegate?.NavigateTo(vm);
+        await this.Delegate.NavigateToAsync(vm);
     }
 }

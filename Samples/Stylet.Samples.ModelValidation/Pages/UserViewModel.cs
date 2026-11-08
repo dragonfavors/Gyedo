@@ -1,4 +1,6 @@
-﻿using CommunityToolkit.Mvvm.ComponentModel;
+using System.Threading;
+using System.Threading.Tasks;
+using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using FluentValidation;
 using System;
@@ -53,10 +55,10 @@ public partial class UserViewModel : Screen
 
     public bool CanSubmit => !this.ShouldAutoValidate || !this.HasErrors;
     [RelayCommand(CanExecute = nameof(CanSubmit))]
-    public void Submit()
+    public async Task Submit()
     {
         if (this.Validate())
-            this.windowManager.ShowMessageBox("Successfully submitted", "success");
+            await this.windowManager.ShowMessageBoxAsync("Successfully submitted", "success");
     }
 }
 

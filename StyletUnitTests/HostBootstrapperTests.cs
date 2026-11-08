@@ -49,7 +49,25 @@ public class HostBootstrapperTests
         }
 
         protected override void ConfigureServices(IServiceCollection services) => this.Register?.Invoke(services);
-        protected override void Launch() { this.LaunchedRoot = this.RootViewModel; this.LaunchCount++; }
+        protected override Task LaunchAsync() { this.LaunchedRoot = this.RootViewModel; this.LaunchCount++; return Task.CompletedTask; }
+    }
+
+    [Test]
+    public async Task RejectedWindowShutdownKeepsHostAliveAndCanBeRetried()
+    {
+        var windows = new Mock<IWindowManager>();
+        windows.SetupSequence(x => x.CloseAllAsync()).ReturnsAsync(false).ReturnsAsync(true);
+        await using var bootstrapper = new TestBootstrapper<RootViewModel>
+        {
+            Register = services => services.AddSingleton(windows.Object),
+        };
+        await bootstrapper.StartAsync(Array.Empty<string>());
+        RootViewModel root = bootstrapper.LaunchedRoot;
+        await bootstrapper.ShutdownAsync();
+        Assert.That(root.DisposeCount, Is.Zero);
+        await bootstrapper.ShutdownAsync();
+        Assert.That(root.DisposeCount, Is.EqualTo(1));
+        windows.Verify(x => x.CloseAllAsync(), Times.Exactly(2));
     }
 
     [Test]

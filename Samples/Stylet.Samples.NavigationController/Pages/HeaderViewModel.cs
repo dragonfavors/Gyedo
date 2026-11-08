@@ -1,4 +1,4 @@
-﻿using CommunityToolkit.Mvvm.Input;
+using CommunityToolkit.Mvvm.Input;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -17,7 +17,7 @@ public partial class HeaderViewModel : Screen
     }
 
     [RelayCommand]
-    public void NavigateToPage1() => this.navigationController.NavigateToPage1();
+    public Task NavigateToPage1Async() => this.navigationController.NavigateToPage1Async();
     [RelayCommand]
-    public void NavigateToPage2() => this.navigationController.NavigateToPage2("the Header");
+    public Task NavigateToPage2Async() => this.navigationController.NavigateToPage2Async("the Header");
 }

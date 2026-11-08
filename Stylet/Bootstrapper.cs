@@ -1,4 +1,5 @@
-﻿using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection;
+using System.Threading.Tasks;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 
 namespace Stylet;
@@ -22,9 +23,9 @@ public abstract class Bootstrapper<TRootViewModel> : HostBootstrapperBase where 
     /// <summary>
     /// Called when the application is launched. Displays the root view.
     /// </summary>
-    protected override void Launch()
+    protected override async Task LaunchAsync()
     {
-        this.DisplayRootView(this.RootViewModel);
+        await this.DisplayRootViewAsync(this.RootViewModel);
     }
 
     /// <summary>

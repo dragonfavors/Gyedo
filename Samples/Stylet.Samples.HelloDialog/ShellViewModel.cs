@@ -1,4 +1,6 @@
-﻿using CommunityToolkit.Mvvm.Input;
+using System.Threading;
+using System.Threading.Tasks;
+using CommunityToolkit.Mvvm.Input;
 using System;
 
 namespace Stylet.Samples.HelloDialog;
@@ -26,10 +28,10 @@ public partial class ShellViewModel : Screen
     }
 
     [RelayCommand]
-    public void ShowDialog()
+    public async Task ShowDialogAsync()
     {
         Dialog1ViewModel dialogVm = this.dialogFactory.CreateDialog1();
-        bool? result = this.windowManager.ShowDialog(dialogVm);
+        bool? result = await this.windowManager.ShowDialogAsync(dialogVm);
         if (result.GetValueOrDefault())
             this.NameString = $"Your name is {dialogVm.Name}";
         else

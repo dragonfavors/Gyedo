@@ -1,4 +1,5 @@
-﻿using System;
+using System.Threading;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -11,14 +12,14 @@ namespace Stylet.Samples.RedditBrowser.RedditApi;
 public interface IRedditApi
 {
     [Get("/r/{subreddit}/{mode}.json")]
-    Task<PostsResponse> FetchPostsAsync([Path] string subreddit, [Path] string mode);
+    Task<PostsResponse> FetchPostsAsync([Path] string subreddit, [Path] string mode, CancellationToken cancellationToken = default);
 
     [Get("/r/{subreddit}/{mode}.json?after={after}&count={count}")]
-    Task<PostsResponse> FetchNextPostsAsync([Path] string subreddit, [Path] string mode, [Path] string after, [Path] int count);
+    Task<PostsResponse> FetchNextPostsAsync([Path] string subreddit, [Path] string mode, [Path] string after, [Path] int count, CancellationToken cancellationToken = default);
 
     [Get("/r/{subreddit}/{mode}.json?before={before}&count={count}")]
-    Task<PostsResponse> FetchPrevPostsAsync([Path] string subreddit, [Path] string mode, [Path] string before, [Path] int count);
+    Task<PostsResponse> FetchPrevPostsAsync([Path] string subreddit, [Path] string mode, [Path] string before, [Path] int count, CancellationToken cancellationToken = default);
 
     [Get("/r/{subreddit}/comments/{postId}.json")]
-    Task<List<CommentsResponse>> FetchCommentsAsync([Path] string subreddit, [Path] string postId);
+    Task<List<CommentsResponse>> FetchCommentsAsync([Path] string subreddit, [Path] string postId, CancellationToken cancellationToken = default);
 }

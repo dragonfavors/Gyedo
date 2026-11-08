@@ -1,4 +1,5 @@
-﻿using Moq;
+using System.Threading;
+using Moq;
 using NUnit.Framework;
 using Stylet;
 using System;
@@ -36,154 +37,160 @@ public class ConductorOneActiveTests
     }
 
     [Test]
-    public void ActivatingItemActivatesAndAddsToItems()
+    public async Task ActivatingItemActivatesAndAddsToItems()
     {
-        var screen = new Mock<IScreen>();
-        ((IScreenState)this.conductor).Activate();
-        this.conductor.ActivateItem(screen.Object);
+        var screen = ScreenMocks.Create<IScreen>();
+        await ((IScreenState)this.conductor).ActivateAsync(CancellationToken.None);
+        await this.conductor.ActivateItemAsync(screen.Object);
 
-        screen.Verify(x => x.Activate());
-        screen.Verify(x => x.Deactivate());
+        screen.Verify(x => x.ActivateAsync(It.IsAny<CancellationToken>()));
+        screen.Verify(x => x.DeactivateAsync(), Times.Never);
         Assert.AreEqual(screen.Object, this.conductor.ActiveItem);
         Assert.That(this.conductor.Items, Is.EquivalentTo(new[] { screen.Object }));
     }
 
     [Test]
-    public void ActivatingItemDeactivatesPreviousItem()
+    public async Task ActivatingItemDeactivatesPreviousItem()
     {
-        var screen1 = new Mock<IScreen>();
-        var screen2 = new Mock<IScreen>();
-        ((IScreenState)this.conductor).Activate();
+        var screen1 = ScreenMocks.Create<IScreen>();
+        var screen2 = ScreenMocks.Create<IScreen>();
+        await ((IScreenState)this.conductor).ActivateAsync(CancellationToken.None);
 
-        this.conductor.ActivateItem(screen1.Object);
-        this.conductor.ActivateItem(screen2.Object);
+        await this.conductor.ActivateItemAsync(screen1.Object);
+        await this.conductor.ActivateItemAsync(screen2.Object);
 
-        screen1.Verify(x => x.Deactivate());
-        screen2.Verify(x => x.Activate());
+        screen1.Verify(x => x.DeactivateAsync());
+        screen2.Verify(x => x.ActivateAsync(It.IsAny<CancellationToken>()));
 
         Assert.AreEqual(screen2.Object, this.conductor.ActiveItem);
         Assert.AreEqual(new[] { screen1.Object, screen2.Object }, this.conductor.Items);
     }
 
     [Test]
-    public void SettingActiveItemActivatesItem()
+    public async Task SettingActiveItemActivatesItem()
     {
-        var screen = new Mock<IScreen>();
-        ((IScreenState)this.conductor).Activate();
-        this.conductor.ActiveItem = screen.Object;
-        screen.Verify(x => x.Activate());
+        var screen = ScreenMocks.Create<IScreen>();
+        await ((IScreenState)this.conductor).ActivateAsync(CancellationToken.None);
+        await this.conductor.ActivateItemAsync(screen.Object);
+        screen.Verify(x => x.ActivateAsync(It.IsAny<CancellationToken>()));
         Assert.AreEqual(this.conductor.ActiveItem, screen.Object);
     }
 
     [Test]
-    public void ClosingActiveItemChoosesPreviousItemIfAvailable()
+    public async Task ClosingActiveItemChoosesPreviousItemIfAvailable()
     {
-        var screen1 = new Mock<IScreen>();
-        var screen2 = new Mock<IScreen>();
-        var screen3 = new Mock<IScreen>();
-        ((IScreenState)this.conductor).Activate();
+        var screen1 = ScreenMocks.Create<IScreen>();
+        var screen2 = ScreenMocks.Create<IScreen>();
+        var screen3 = ScreenMocks.Create<IScreen>();
+        await ((IScreenState)this.conductor).ActivateAsync(CancellationToken.None);
 
-        this.conductor.Items.AddRange(new[] { screen1.Object, screen2.Object, screen3.Object });
-        this.conductor.ActivateItem(screen2.Object);
+        await this.conductor.AddItemAsync(screen1.Object);
+        await this.conductor.AddItemAsync(screen2.Object);
+        await this.conductor.AddItemAsync(screen3.Object);
+        await this.conductor.ActivateItemAsync(screen2.Object);
 
         screen2.Setup(x => x.CanCloseAsync()).Returns(Task.FromResult(true));
 
-        this.conductor.CloseItem(screen2.Object);
+        await this.conductor.CloseItemAsync(screen2.Object);
         Assert.AreEqual(screen1.Object, this.conductor.ActiveItem);
         Assert.AreEqual(new[] { screen1.Object, screen3.Object }, this.conductor.Items);
     }
 
     [Test]
-    public void ClosingActiveItemChoosesNextItemIfNoPreviousItem()
+    public async Task ClosingActiveItemChoosesNextItemIfNoPreviousItem()
     {
-        var screen1 = new Mock<IScreen>();
-        var screen2 = new Mock<IScreen>();
-        var screen3 = new Mock<IScreen>();
-        ((IScreenState)this.conductor).Activate();
+        var screen1 = ScreenMocks.Create<IScreen>();
+        var screen2 = ScreenMocks.Create<IScreen>();
+        var screen3 = ScreenMocks.Create<IScreen>();
+        await ((IScreenState)this.conductor).ActivateAsync(CancellationToken.None);
 
-        this.conductor.Items.AddRange(new[] { screen1.Object, screen2.Object, screen3.Object });
-        this.conductor.ActivateItem(screen3.Object);
+        await this.conductor.AddItemAsync(screen1.Object);
+        await this.conductor.AddItemAsync(screen2.Object);
+        await this.conductor.AddItemAsync(screen3.Object);
+        await this.conductor.ActivateItemAsync(screen3.Object);
 
         screen3.Setup(x => x.CanCloseAsync()).Returns(Task.FromResult(true));
 
-        this.conductor.CloseItem(screen3.Object);
+        await this.conductor.CloseItemAsync(screen3.Object);
         Assert.AreEqual(screen2.Object, this.conductor.ActiveItem);
         Assert.AreEqual(new[] { screen1.Object, screen2.Object }, this.conductor.Items);
     }
 
     [Test]
-    public void ActivateItemDoesNotActivateIfConductorIsNotActive()
+    public async Task ActivateItemDoesNotActivateIfConductorIsNotActive()
     {
-        var screen = new Mock<IScreen>();
-        this.conductor.ActivateItem(screen.Object);
-        screen.Verify(x => x.Activate(), Times.Never);
+        var screen = ScreenMocks.Create<IScreen>();
+        await this.conductor.ActivateItemAsync(screen.Object);
+        screen.Verify(x => x.ActivateAsync(It.IsAny<CancellationToken>()), Times.Never);
     }
 
     [Test]
-    public void ActivateItemDoesActiveIfConductorIsActive()
+    public async Task ActivateItemDoesActiveIfConductorIsActive()
     {
-        var screen = new Mock<IScreen>();
-        ((IScreenState)this.conductor).Activate();
-        this.conductor.ActivateItem(screen.Object);
-        screen.Verify(x => x.Activate());
+        var screen = ScreenMocks.Create<IScreen>();
+        await ((IScreenState)this.conductor).ActivateAsync(CancellationToken.None);
+        await this.conductor.ActivateItemAsync(screen.Object);
+        screen.Verify(x => x.ActivateAsync(It.IsAny<CancellationToken>()));
     }
 
     [Test]
-    public void DeactiveDeactivatesItems()
+    public async Task DeactiveDeactivatesItems()
     {
-        var screen = new Mock<IScreen>();
-        ((IScreenState)this.conductor).Activate();
-        this.conductor.ActivateItem(screen.Object);
-        ((IScreenState)this.conductor).Deactivate();
-        screen.Verify(x => x.Deactivate());
+        var screen = ScreenMocks.Create<IScreen>();
+        await ((IScreenState)this.conductor).ActivateAsync(CancellationToken.None);
+        await this.conductor.ActivateItemAsync(screen.Object);
+        await ((IScreenState)this.conductor).DeactivateAsync();
+        screen.Verify(x => x.DeactivateAsync());
     }
 
     [Test]
-    public void ClosingClosesAllItems()
+    public async Task ClosingClosesAllItems()
     {
-        var screen = new Mock<IMyScreen>();
-        screen.Setup(x => x.Close()).Callback(() => System.Diagnostics.Debug.WriteLine("FOO"));
+        var screen = ScreenMocks.Create<IMyScreen>();
+        screen.Setup(x => x.CloseAsync()).Callback(() => System.Diagnostics.Debug.WriteLine("FOO"));
 
-        ((IScreenState)this.conductor).Activate();
-        this.conductor.ActivateItem(screen.Object);
-        ((IScreenState)this.conductor).Close();
-        screen.Verify(x => x.Close(), Times.Once());
+        await ((IScreenState)this.conductor).ActivateAsync(CancellationToken.None);
+        await this.conductor.ActivateItemAsync(screen.Object);
+        await ((IScreenState)this.conductor).CloseAsync();
+        screen.Verify(x => x.CloseAsync(), Times.Once());
         screen.Verify(x => x.Dispose(), Times.Once());
         Assert.AreEqual(0, this.conductor.Items.Count);
     }
 
     [Test]
-    public void ConductorCanCloseIfAllItemsCanClose()
+    public async Task ConductorCanCloseIfAllItemsCanClose()
     {
-        var screen1 = new Mock<IScreen>();
-        var screen2 = new Mock<IScreen>();
+        var screen1 = ScreenMocks.Create<IScreen>();
+        var screen2 = ScreenMocks.Create<IScreen>();
 
         screen1.Setup(x => x.CanCloseAsync()).Returns(Task.FromResult(true));
         screen2.Setup(x => x.CanCloseAsync()).Returns(Task.FromResult(true));
 
-        this.conductor.Items.AddRange(new[] { screen1.Object, screen2.Object });
+        await this.conductor.AddItemAsync(screen1.Object);
+        await this.conductor.AddItemAsync(screen2.Object);
         Assert.IsTrue(this.conductor.CanCloseAsync().Result);
     }
 
     [Test]
-    public void ConductorCanNotCloseIfAnyItemCanNotClose()
+    public async Task ConductorCanNotCloseIfAnyItemCanNotClose()
     {
-        var screen1 = new Mock<IScreen>();
-        var screen2 = new Mock<IScreen>();
+        var screen1 = ScreenMocks.Create<IScreen>();
+        var screen2 = ScreenMocks.Create<IScreen>();
 
         screen1.Setup(x => x.CanCloseAsync()).Returns(Task.FromResult(true));
         screen2.Setup(x => x.CanCloseAsync()).Returns(Task.FromResult(false));
 
-        this.conductor.Items.AddRange(new[] { screen1.Object, screen2.Object });
+        await this.conductor.AddItemAsync(screen1.Object);
+        await this.conductor.AddItemAsync(screen2.Object);
         Assert.IsFalse(this.conductor.CanCloseAsync().Result);
     }
 
     [Test]
-    public void ConductorCanCloseAsyncCallsCanCloseOnSelfBeforeChildren()
+    public async Task ConductorCanCloseAsyncCallsCanCloseOnSelfBeforeChildren()
     {
-        var screen = new Mock<IScreen>();
+        var screen = ScreenMocks.Create<IScreen>();
 
-        this.conductor.ActivateItem(screen.Object);
+        await this.conductor.ActivateItemAsync(screen.Object);
         this.conductor.CanCloseValue = false;
 
         Assert.IsFalse(this.conductor.CanCloseAsync().Result);
@@ -192,268 +199,240 @@ public class ConductorOneActiveTests
     }
 
     [Test]
-    public void AddingItemSetsParent()
+    public async Task AddingItemSetsParent()
     {
-        var screen = new Mock<IScreen>();
-        this.conductor.Items.Add(screen.Object);
+        var screen = ScreenMocks.Create<IScreen>();
+        await this.conductor.AddItemAsync(screen.Object);
         screen.VerifySet(x => x.Parent = this.conductor);
     }
 
     [Test]
-    public void AddingItemDoesNotChangeActiveItem()
+    public async Task AddingItemDoesNotChangeActiveItem()
     {
-        var screen1 = new Mock<IScreen>();
-        var screen2 = new Mock<IScreen>();
-        ((IScreenState)this.conductor).Activate();
-        this.conductor.ActivateItem(screen1.Object);
+        var screen1 = ScreenMocks.Create<IScreen>();
+        var screen2 = ScreenMocks.Create<IScreen>();
+        await ((IScreenState)this.conductor).ActivateAsync(CancellationToken.None);
+        await this.conductor.ActivateItemAsync(screen1.Object);
 
         // This is an implementation detail
-        screen1.Verify(x => x.Deactivate(), Times.Once);
-        screen1.Verify(x => x.Activate(), Times.Once);
+        screen1.Verify(x => x.DeactivateAsync(), Times.Never);
+        screen1.Verify(x => x.ActivateAsync(It.IsAny<CancellationToken>()), Times.Once);
 
-        this.conductor.Items.Add(screen2.Object);
+        await this.conductor.AddItemAsync(screen2.Object);
 
         Assert.AreEqual(this.conductor.ActiveItem, screen1.Object);
-        screen2.Verify(x => x.Activate(), Times.Never);
-        screen1.Verify(x => x.Deactivate(), Times.Once); // The one deactivate from earlier
+        screen2.Verify(x => x.ActivateAsync(It.IsAny<CancellationToken>()), Times.Never);
+        screen1.Verify(x => x.DeactivateAsync(), Times.Never); // The one deactivate from earlier
     }
 
     [Test]
-    public void RemovingItemClosesAndRemovesParent()
+    public async Task RemovingItemClosesAndRemovesParent()
     {
-        var screen = new Mock<IMyScreen>();
+        var screen = ScreenMocks.Create<IMyScreen>();
         screen.SetupGet(x => x.Parent).Returns(this.conductor);
-        this.conductor.Items.Add(screen.Object);
-        this.conductor.Items.Remove(screen.Object);
+        await this.conductor.AddItemAsync(screen.Object);
+        await this.conductor.CloseItemAsync(screen.Object);
         screen.VerifySet(x => x.Parent = null);
-        screen.Verify(x => x.Close());
+        screen.Verify(x => x.CloseAsync());
     }
 
     [Test]
-    public void RemovingItemDisposesIfDisposeChildrenIsTrue()
+    public async Task RemovingItemDisposesIfDisposeChildrenIsTrue()
     {
-        var screen = new Mock<IMyScreen>();
-        this.conductor.Items.Add(screen.Object);
-        this.conductor.Items.Remove(screen.Object);
+        var screen = ScreenMocks.Create<IMyScreen>();
+        await this.conductor.AddItemAsync(screen.Object);
+        await this.conductor.CloseItemAsync(screen.Object);
         screen.Verify(x => x.Dispose());
     }
 
     [Test]
-    public void RemovingItemDoesNotDisposeIfDisposeChildrenIsFalse()
+    public async Task RemovingItemDoesNotDisposeIfDisposeChildrenIsFalse()
     {
-        var screen = new Mock<IMyScreen>();
+        var screen = ScreenMocks.Create<IMyScreen>();
         this.conductor.DisposeChildren = false;
-        this.conductor.Items.Add(screen.Object);
-        this.conductor.Items.Remove(screen.Object);
+        await this.conductor.AddItemAsync(screen.Object);
+        await this.conductor.CloseItemAsync(screen.Object);
         screen.Verify(x => x.Dispose(), Times.Never);
     }
 
     [Test]
-    public void RemovingActiveItemActivatesAnotherItem()
+    public async Task RemovingActiveItemActivatesAnotherItem()
     {
-        ((IScreenState)this.conductor).Activate();
-        var screen1 = new Mock<IMyScreen>();
-        var screen2 = new Mock<IMyScreen>();
-        this.conductor.ActivateItem(screen1.Object);
-        this.conductor.Items.Add(screen2.Object);
+        await ((IScreenState)this.conductor).ActivateAsync(CancellationToken.None);
+        var screen1 = ScreenMocks.Create<IMyScreen>();
+        var screen2 = ScreenMocks.Create<IMyScreen>();
+        await this.conductor.ActivateItemAsync(screen1.Object);
+        await this.conductor.AddItemAsync(screen2.Object);
 
-        this.conductor.Items.Remove(screen1.Object);
+        await this.conductor.CloseItemAsync(screen1.Object);
 
         Assert.AreEqual(this.conductor.ActiveItem, screen2.Object);
-        screen2.Verify(x => x.Activate());
-        screen1.Verify(x => x.Close());
+        screen2.Verify(x => x.ActivateAsync(It.IsAny<CancellationToken>()));
+        screen1.Verify(x => x.CloseAsync());
     }
 
     [Test]
-    public void AddingItemTwiceDoesNotResultInDuplicates()
+    public async Task AddingItemTwiceDoesNotResultInDuplicates()
     {
-        var screen = new Mock<IScreen>();
-        this.conductor.ActivateItem(screen.Object);
-        this.conductor.ActivateItem(screen.Object);
+        var screen = ScreenMocks.Create<IScreen>();
+        await this.conductor.ActivateItemAsync(screen.Object);
+        await this.conductor.ActivateItemAsync(screen.Object);
         Assert.AreEqual(1, this.conductor.Items.Count);
     }
 
     [Test]
-    public void DeactivateItemDeactivatesItemButDoesNotRemoveFromItems()
+    public async Task DeactivateItemDeactivatesItemButDoesNotRemoveFromItems()
     {
-        var screen = new Mock<IScreen>();
-        this.conductor.ActivateItem(screen.Object);
-        this.conductor.DeactivateItem(screen.Object);
-        screen.Verify(x => x.Deactivate());
+        var screen = ScreenMocks.Create<IScreen>();
+        await this.conductor.ActivateItemAsync(screen.Object);
+        await this.conductor.DeactivateItemAsync(screen.Object);
+        screen.Verify(x => x.DeactivateAsync());
         Assert.That(this.conductor.Items, Is.EquivalentTo(new[] { screen.Object }));
     }
 
     [Test]
-    public void CloseItemDoesNothingIfItemCanNotClose()
+    public async Task CloseItemDoesNothingIfItemCanNotClose()
     {
-        var screen = new Mock<IMyScreen>();
-        this.conductor.ActivateItem(screen.Object);
-        this.conductor.CloseItem(screen.Object);
-        screen.Verify(x => x.Close(), Times.Never);
+        var screen = ScreenMocks.Create<IMyScreen>();
+        await this.conductor.ActivateItemAsync(screen.Object);
+        screen.Setup(x => x.CanCloseAsync()).ReturnsAsync(false);
+        await this.conductor.CloseItemAsync(screen.Object);
+        screen.Verify(x => x.CloseAsync(), Times.Never);
         screen.Verify(x => x.Dispose(), Times.Never);
         Assert.That(this.conductor.Items, Is.EquivalentTo(new[] { screen.Object }));
     }
 
     [Test]
-    public void CloseItemDeactivatesItemAndRemovesFromItemsIfItemCanClose()
+    public async Task CloseItemDeactivatesItemAndRemovesFromItemsIfItemCanClose()
     {
-        var screen = new Mock<IMyScreen>();
+        var screen = ScreenMocks.Create<IMyScreen>();
         screen.Setup(x => x.CanCloseAsync()).Returns(Task.FromResult(true));
-        this.conductor.ActivateItem(screen.Object);
-        this.conductor.CloseItem(screen.Object);
-        screen.Verify(x => x.Close());
+        await this.conductor.ActivateItemAsync(screen.Object);
+        await this.conductor.CloseItemAsync(screen.Object);
+        screen.Verify(x => x.CloseAsync());
         Assert.AreEqual(0, this.conductor.Items.Count);
     }
 
     [Test]
-    public void CloseItemDisposesIfDisposeChildrenIsTrue()
+    public async Task CloseItemDisposesIfDisposeChildrenIsTrue()
     {
-        var screen = new Mock<IMyScreen>();
+        var screen = ScreenMocks.Create<IMyScreen>();
         screen.Setup(x => x.CanCloseAsync()).Returns(Task.FromResult(true));
-        this.conductor.ActivateItem(screen.Object);
-        this.conductor.CloseItem(screen.Object);
+        await this.conductor.ActivateItemAsync(screen.Object);
+        await this.conductor.CloseItemAsync(screen.Object);
         screen.Verify(x => x.Dispose());
     }
 
     [Test]
-    public void CloseItemDoesNotDisposeIfDisposeChildrenIsFalse()
+    public async Task CloseItemDoesNotDisposeIfDisposeChildrenIsFalse()
     {
-        var screen = new Mock<IMyScreen>();
+        var screen = ScreenMocks.Create<IMyScreen>();
         this.conductor.DisposeChildren = false;
         screen.Setup(x => x.CanCloseAsync()).Returns(Task.FromResult(true));
-        this.conductor.ActivateItem(screen.Object);
-        this.conductor.CloseItem(screen.Object);
+        await this.conductor.ActivateItemAsync(screen.Object);
+        await this.conductor.CloseItemAsync(screen.Object);
         screen.Verify(x => x.Dispose(), Times.Never);
     }
 
     [Test]
-    public void ClosingConductorClosesActiveItem()
+    public async Task ClosingConductorClosesActiveItem()
     {
-        var screen1 = new Mock<IMyScreen>();
+        var screen1 = ScreenMocks.Create<IMyScreen>();
         screen1.SetupGet(x => x.Parent).Returns(this.conductor);
-        this.conductor.ActivateItem(screen1.Object);
-        ((IScreenState)this.conductor).Close();
-        screen1.Verify(x => x.Close());
+        await this.conductor.ActivateItemAsync(screen1.Object);
+        await ((IScreenState)this.conductor).CloseAsync();
+        screen1.Verify(x => x.CloseAsync());
         screen1.Verify(x => x.Dispose());
         screen1.VerifySet(x => x.Parent = null);
     }
 
     [Test]
-    public void ClosesItemIfItemRequestsClose()
+    public async Task ClosesItemIfItemRequestsClose()
     {
-        var screen = new Mock<IMyScreen>();
-        this.conductor.ActivateItem(screen.Object);
+        var screen = ScreenMocks.Create<IMyScreen>();
+        await this.conductor.ActivateItemAsync(screen.Object);
         screen.Setup(x => x.CanCloseAsync()).Returns(Task.FromResult(true));
-        ((IChildDelegate)this.conductor).CloseItem(screen.Object);
+        await ((IChildDelegate)this.conductor).CloseItemAsync(screen.Object);
 
-        screen.Verify(x => x.Close());
+        screen.Verify(x => x.CloseAsync());
         screen.Verify(x => x.Dispose());
         Assert.Null(this.conductor.ActiveItem);
     }
 
     [Test]
-    public void ClearingItemsClosesAndDisposes()
+    public async Task ClearingItemsClosesAndDisposes()
     {
-        var screen1 = new Mock<IMyScreen>();
-        var screen2 = new Mock<IMyScreen>();
+        var screen1 = ScreenMocks.Create<IMyScreen>();
+        var screen2 = ScreenMocks.Create<IMyScreen>();
 
-        this.conductor.ActivateItem(screen1.Object);
-        this.conductor.ActivateItem(screen2.Object);
+        await this.conductor.ActivateItemAsync(screen1.Object);
+        await this.conductor.ActivateItemAsync(screen2.Object);
 
-        this.conductor.Items.Clear();
+        await this.conductor.ClearAsync();
 
-        screen1.Verify(x => x.Deactivate());
-        screen1.Verify(x => x.Close());
+        screen1.Verify(x => x.DeactivateAsync());
+        screen1.Verify(x => x.CloseAsync());
         screen1.Verify(x => x.Dispose());
 
-        screen2.Verify(x => x.Close());
+        screen2.Verify(x => x.CloseAsync());
         screen2.Verify(x => x.Dispose());
     }
 
     [Test]
-    public void ClosingDoesNotCloseThenDeactivateActiveItem()
+    public async Task ClosingDoesNotCloseThenDeactivateActiveItem()
     {
-        // If it calls Close then Deactivate, this causes OnInitialActivate to be called again (in order to
-        // activate the screen before deactivating it again).
-
-        var screen = new Mock<IMyScreen>();
-
-        this.conductor.ActivateItem(screen.Object);
-        screen.Invocations.Clear();
-
-        int sequence = 0;
-        screen.Setup(x => x.Deactivate()).Callback(() => Assert.AreEqual(0, sequence++));
-        screen.Setup(x => x.Close()).Callback(() => Assert.AreEqual(1, sequence++));
-
-        ((IScreenState)this.conductor).Close();
-
-        Assert.AreEqual(2, sequence);
+        var screen = new AsyncScreenProbe();
+        await this.conductor.ActivateItemAsync(screen);
+        await this.conductor.ActivateAsync();
+        screen.Calls.Clear();
+        await this.conductor.CloseAsync();
+        Assert.That(screen.Calls, Is.EqualTo(new[] { "deactivate", "close", "dispose" }));
     }
 
     [Test]
-    public void ReplacingActiveItemDoesNotCloseThenDeactivate()
+    public async Task ReplacingActiveItemDoesNotCloseThenDeactivate()
     {
-        // If it calls Close then Deactivate, this causes OnInitialActivate to be called again (in order to
-        // activate the screen before deactivating it again).
-
-        var screen1 = new Mock<IMyScreen>();
-        var screen2 = new Mock<IMyScreen>();
-
-        this.conductor.ActivateItem(screen1.Object);
-        screen1.Invocations.Clear();
-
-        int sequence = 0;
-        screen1.Setup(x => x.Deactivate()).Callback(() => Assert.AreEqual(0, sequence++));
-        screen1.Setup(x => x.Close()).Callback(() => Assert.AreEqual(1, sequence++));
-
-        this.conductor.Items[0] = screen2.Object;
-
-        Assert.AreEqual(2, sequence);
+        var screen = new AsyncScreenProbe();
+        await this.conductor.ActivateItemAsync(screen);
+        await this.conductor.ActivateAsync();
+        screen.Calls.Clear();
+        await this.conductor.CloseItemAsync(screen);
+        Assert.That(screen.Calls, Is.EqualTo(new[] { "deactivate", "close", "dispose" }));
     }
 
     [Test]
-    public void RemovingActiveItemDoesNotCloseThenDeactivate()
+    public async Task RemovingActiveItemDoesNotCloseThenDeactivate()
     {
-        // If it calls Close then Deactivate, this causes OnInitialActivate to be called again (in order to
-        // activate the screen before deactivating it again).
-
-        var screen1 = new Mock<IMyScreen>();
-        var screen2 = new Mock<IMyScreen>();
-
-        this.conductor.ActivateItem(screen1.Object);
-        screen1.Invocations.Clear();
-
-        int sequence = 0;
-        screen1.Setup(x => x.Deactivate()).Callback(() => Assert.AreEqual(0, sequence++));
-        screen1.Setup(x => x.Close()).Callback(() => Assert.AreEqual(1, sequence++));
-
-        this.conductor.Items.RemoveAt(0);
-
-        Assert.AreEqual(2, sequence);
+        var screen = new AsyncScreenProbe();
+        await this.conductor.ActivateItemAsync(screen);
+        await this.conductor.ActivateAsync();
+        screen.Calls.Clear();
+        await this.conductor.CloseItemAsync(screen);
+        Assert.That(screen.Calls, Is.EqualTo(new[] { "deactivate", "close", "dispose" }));
     }
 
     [Test]
-    public void ClosingTheActiveItemDoesNotDisposeItTwice()
+    public async Task ClosingTheActiveItemDoesNotDisposeItTwice()
     {
-        var screen = new Mock<IMyScreen>();
+        var screen = ScreenMocks.Create<IMyScreen>();
         screen.Setup(x => x.CanCloseAsync()).ReturnsAsync(true);
 
-        this.conductor.ActivateItem(screen.Object);
-        this.conductor.CloseItem(screen.Object);
+        await this.conductor.ActivateItemAsync(screen.Object);
+        await this.conductor.CloseItemAsync(screen.Object);
 
         screen.Verify(x => x.Dispose(), Times.Once());
     }
 
     [Test]
-    public void ClosingTheNonActiveItemDoesNotDisposeItTwice()
+    public async Task ClosingTheNonActiveItemDoesNotDisposeItTwice()
     {
-        var screen1 = new Mock<IMyScreen>();
-        var screen2 = new Mock<IMyScreen>();
+        var screen1 = ScreenMocks.Create<IMyScreen>();
+        var screen2 = ScreenMocks.Create<IMyScreen>();
         screen1.Setup(x => x.CanCloseAsync()).ReturnsAsync(true);
 
-        this.conductor.ActivateItem(screen1.Object);
-        this.conductor.ActivateItem(screen2.Object);
-        this.conductor.CloseItem(screen1.Object);
+        await this.conductor.ActivateItemAsync(screen1.Object);
+        await this.conductor.ActivateItemAsync(screen2.Object);
+        await this.conductor.CloseItemAsync(screen1.Object);
 
         screen1.Verify(x => x.Dispose(), Times.Once());
     }

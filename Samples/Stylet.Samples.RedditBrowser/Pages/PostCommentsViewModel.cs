@@ -1,4 +1,6 @@
-﻿using CommunityToolkit.Mvvm.ComponentModel;
+using System.Threading;
+using System.Threading.Tasks;
+using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using Stylet.Samples.RedditBrowser.RedditApi;
 using System;
@@ -21,14 +23,16 @@ public partial class PostCommentsViewModel : Screen
         this.client = client;
     }
 
-    protected override async void OnInitialActivate()
+    protected override async Task OnActivatedAsync(CancellationToken cancellationToken)
     {
-        this.CommentCollection = await this.client.GetPostComments(this.Subreddit, this.PostId36);
+        var result = await this.client.GetPostComments(this.Subreddit, this.PostId36, cancellationToken);
+        cancellationToken.ThrowIfCancellationRequested();
+        this.CommentCollection = result;
     }
 
     [RelayCommand]
-    public void GoBack()
+    public async Task GoBack()
     {
-        this.RequestClose();
+        await this.RequestCloseAsync();
     }
 }

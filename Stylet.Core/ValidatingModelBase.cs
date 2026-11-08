@@ -1,4 +1,5 @@
 ﻿using CommunityToolkit.Mvvm.ComponentModel;
+using CommunityToolkit.Mvvm.Messaging;
 using System;
 using System.Collections;
 using System.Collections.Generic;
@@ -14,7 +15,7 @@ namespace Stylet;
 /// <summary>
 /// Base for ViewModels which require property validation
 /// </summary>
-public class ValidatingModelBase : ObservableObject, INotifyDataErrorInfo, INotifyPropertyChangedDispatcher
+public class ValidatingModelBase : ObservableRecipient, INotifyDataErrorInfo, INotifyPropertyChangedDispatcher
 {
     /// <summary>
     /// PropertyChanged와 ErrorsChanged 알림의 전달 방법입니다.
@@ -55,17 +56,20 @@ public class ValidatingModelBase : ObservableObject, INotifyDataErrorInfo, INoti
     /// <summary>
     /// Initialises a new instance of the <see cref="ValidatingModelBase"/> class, without using an <see cref="IModelValidator"/>
     /// </summary>
-    public ValidatingModelBase()
-    {
-        this.AutoValidate = true;
-    }
+    public ValidatingModelBase() : this(null, WeakReferenceMessenger.Default) { }
 
     /// <summary>
     /// Initialises a new instance of the <see cref="ValidatingModelBase"/> class, using the specifies <see cref="IModelValidator"/>
     /// </summary>
     /// <param name="validator">Validator adapter to use to perform validations</param>
-    public ValidatingModelBase(IModelValidator validator) : this()
+    public ValidatingModelBase(IModelValidator validator) : this(validator, WeakReferenceMessenger.Default) { }
+
+    /// <summary>검증기와 메시지 전달자를 연결합니다.</summary>
+    /// <param name="validator">검증기입니다. null이면 자동 검증을 수행하지 않습니다.</param>
+    /// <param name="messenger">활성 상태의 메시지 구독에 사용할 전달자입니다.</param>
+    public ValidatingModelBase(IModelValidator validator, IMessenger messenger) : base(messenger)
     {
+        this.AutoValidate = true;
         // Can't set this.validator, as it's virtual, and FxCop complains
         this._validator = validator;
         if (this._validator != null)

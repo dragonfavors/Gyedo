@@ -1,4 +1,6 @@
-﻿using System;
+using System.Threading;
+using System.Threading.Tasks;
+using System;
 
 namespace Stylet.Samples.TabNavigation;
 
@@ -9,19 +11,19 @@ public class Page2ViewModel : Screen, IDisposable
         this.DisplayName = "Page 2";
     }
 
-    protected override void OnActivate()
+    protected override async Task OnActivatedAsync(CancellationToken cancellationToken)
     {
-        base.OnActivate();
+        await base.OnActivatedAsync(cancellationToken);
     }
 
-    protected override void OnDeactivate()
+    protected override async Task OnDeactivatedAsync()
     {
-        base.OnDeactivate();
+        await base.OnDeactivatedAsync();
     }
 
-    protected override void OnClose()
+    protected override async Task OnClosedAsync()
     {
-        base.OnClose();
+        await base.OnClosedAsync();
     }
 
     public void Dispose()

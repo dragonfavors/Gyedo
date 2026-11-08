@@ -70,20 +70,8 @@ public abstract class HostBootstrapperBase : BootstrapperBase, IAsyncDisposable
         return builder.Build();
     }
 
-    /// <summary>WPF Startup 이벤트용 진입점입니다. 직접 호출할 때는 StartAsync를 사용하세요.</summary>
-    public override async void Start(string[] args)
-    {
-        try { await this.StartAsync(args); }
-        catch (Exception exception)
-        {
-            Trace.TraceError("호스트 시작 실패: {0}", exception);
-            this.Application?.Shutdown(1);
-            throw;
-        }
-    }
-
     /// <summary>서비스 시작을 기다린 뒤 루트 화면을 표시합니다.</summary>
-    public Task StartAsync(string[] args, CancellationToken cancellationToken = default)
+    public override Task StartAsync(string[] args, CancellationToken cancellationToken = default)
     {
         lock (this.lifecycleLock)
         {
@@ -108,7 +96,7 @@ public abstract class HostBootstrapperBase : BootstrapperBase, IAsyncDisposable
 
             this.Application?.Resources.Add(View.ViewManagerResourceKey, this.GetInstance(typeof(IViewManager)));
             this.Configure();
-            this.Launch();
+            await this.LaunchAsync();
             this.OnLaunch();
         }
         catch
@@ -181,11 +169,19 @@ public abstract class HostBootstrapperBase : BootstrapperBase, IAsyncDisposable
     public Task ShutdownAsync(int exitCode = 0)
     {
         lock (this.lifecycleLock)
-            return this.shutdownTask ??= this.ShutdownCoreAsync(exitCode);
+        {
+            if (this.shutdownTask == null || (this.shutdownTask.IsCompleted && Volatile.Read(ref this.disposed) == 0))
+                this.shutdownTask = this.ShutdownCoreAsync(exitCode);
+            return this.shutdownTask;
+        }
     }
 
     private async Task ShutdownCoreAsync(int exitCode)
     {
+        if (this.Host != null && this.Services.GetService<IWindowManager>() is IWindowManager windows && !await windows.CloseAllAsync())
+        {
+            return;
+        }
         try { await this.StopAsync(); }
         catch
         {

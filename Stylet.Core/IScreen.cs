@@ -1,5 +1,6 @@
 using System;
 using System.Threading.Tasks;
+using System.Threading;
 
 namespace Stylet;
 
@@ -60,19 +61,19 @@ public interface IScreenState
     event EventHandler<CloseEventArgs> Closed;
 
     /// <summary>
-    /// Activate the object. May not actually cause activation (e.g. if it's already active)
+    /// 초기화·활성화 훅과 상태 알림 완료를 기다립니다. 이미 활성 상태이면 반복하지 않습니다.
     /// </summary>
-    void Activate();
+    Task ActivateAsync(CancellationToken cancellationToken = default);
 
     /// <summary>
-    /// Deactivate the object. May not actually cause deactivation (e.g. if it's already deactive)
+    /// 진행 중인 활성화를 취소하고 비활성화 완료를 기다립니다. 닫힌 화면은 다시 열지 않습니다.
     /// </summary>
-    void Deactivate();
+    Task DeactivateAsync();
 
     /// <summary>
-    /// Close the object. May not actually cause closure (e.g. if it's already closed)
+    /// 활성화 취소·비활성화·종료 완료를 기다립니다. 종료 조건은 호출자가 먼저 확인해야 합니다.
     /// </summary>
-    void Close();
+    Task CloseAsync();
 }
 
 /// <summary>
@@ -116,10 +117,10 @@ public interface IGuardClose
 public interface IRequestClose
 {
     /// <summary>
-    /// Request that the conductor responsible for this screen close it
+    /// 부모에게 종료를 요청합니다. 거절되면 false, 종료·부모 정리가 끝나면 true를 반환합니다.
     /// </summary>
     /// <param name="dialogResult">DialogResult to return, if this is a dialog</param>
-    void RequestClose(bool? dialogResult = null);
+    Task<bool> RequestCloseAsync(bool? dialogResult = null);
 }
 
 /// <summary>

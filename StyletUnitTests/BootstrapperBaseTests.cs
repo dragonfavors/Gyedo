@@ -1,3 +1,4 @@
+using System.Threading.Tasks;
 using Moq;
 using NUnit.Framework;
 using Stylet;
@@ -30,7 +31,7 @@ public class BootstrapperBaseTests
             this.viewManager = viewManager;
             this.windowManager = windowManager;
 
-            this.Start(new string[0]);
+
         }
 
         public new Application Application => base.Application;
@@ -49,9 +50,10 @@ public class BootstrapperBaseTests
         }
 
         public bool LaunchCalled;
-        protected override void Launch()
+        protected override Task LaunchAsync()
         {
             this.LaunchCalled = true;
+            return Task.CompletedTask;
         }
 
         public bool OnLaunchCalled;
@@ -79,14 +81,10 @@ public class BootstrapperBaseTests
             base.ConfigureBootstrapper();
         }
 
-        public new void Start(string[] args)
-        {
-            base.Start(args);
-        }
 
-        public new void DisplayRootView(object rootViewModel)
+        public new async Task DisplayRootViewAsync(object rootViewModel)
         {
-            base.DisplayRootView(rootViewModel);
+            await base.DisplayRootViewAsync(rootViewModel);
         }
     }
 
@@ -113,12 +111,13 @@ public class BootstrapperBaseTests
     private IDispatcher dispatcher;
 
     [SetUp]
-    public void SetUp()
+    public async Task SetUp()
     {
         this.dispatcher = Execute.Dispatcher;
         this.viewManager = new Mock<IViewManager>();
         this.windowManager = new Mock<IWindowManager>();
         this.bootstrapper = new MyBootstrapperBase(this.viewManager.Object, this.windowManager.Object);
+        await this.bootstrapper.StartAsync(Array.Empty<string>());
     }
 
     [TearDown]
@@ -134,39 +133,39 @@ public class BootstrapperBaseTests
     }
 
     [Test]
-    public void StartCallsConfigureBootstrapper()
+    public async Task StartCallsConfigureBootstrapper()
     {
-        this.bootstrapper.Start(new string[0]);
+        await this.bootstrapper.StartAsync(new string[0]);
         Assert.True(this.bootstrapper.ConfigureBootstrapperCalled);
     }
 
     [Test]
-    public void StartAssignsArgs()
+    public async Task StartAssignsArgs()
     {
-        this.bootstrapper.Start(new[] { "one", "two" });
+        await this.bootstrapper.StartAsync(new[] { "one", "two" });
         Assert.That(this.bootstrapper.Args, Is.EquivalentTo(new[] { "one", "two" }));
     }
 
     [Test]
-    public void StartCallsLaunch()
+    public async Task StartCallsLaunch()
     {
-        this.bootstrapper.Start(new string[0]);
+        await this.bootstrapper.StartAsync(new string[0]);
         Assert.True(this.bootstrapper.LaunchCalled);
     }
 
     [Test]
-    public void StartCallsOnLaunch()
+    public async Task StartCallsOnLaunch()
     {
-        this.bootstrapper.Start(new string[0]);
+        await this.bootstrapper.StartAsync(new string[0]);
         Assert.True(this.bootstrapper.OnLaunchCalled);
     }
 
     [Test]
-    public void DisplayRootViewDisplaysTheRootView()
+    public async Task DisplayRootViewDisplaysTheRootView()
     {
         object viewModel = new();
-        this.bootstrapper.DisplayRootView(viewModel);
+        await this.bootstrapper.DisplayRootViewAsync(viewModel);
 
-        this.windowManager.Verify(x => x.ShowWindow(viewModel));
+        this.windowManager.Verify(x => x.ShowWindowAsync(viewModel));
     }
 }

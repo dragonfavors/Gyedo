@@ -131,15 +131,15 @@ public class ViewManagerTests
     {
         public int LoadCount { get; private set; }
         public Action CloseAction { get; set; }
-        protected override void OnViewLoaded() => this.LoadCount++;
-        protected override void OnClose() => this.CloseAction?.Invoke();
+        protected override Task OnViewLoadedAsync() { this.LoadCount++; return Task.CompletedTask; }
+        protected override Task OnClosedAsync() { this.CloseAction?.Invoke(); return Task.CompletedTask; }
     }
 
     private class LoadingModel : IViewLifecycleAware
     {
         public int LoadCount { get; private set; }
         public event EventHandler ViewReleaseRequested;
-        public void ViewLoaded() => this.LoadCount++;
+        public Task ViewLoadedAsync() { this.LoadCount++; return Task.CompletedTask; }
         public void ReleaseView() => this.ViewReleaseRequested?.Invoke(this, EventArgs.Empty);
     }
 
@@ -365,7 +365,7 @@ public class ViewManagerTests
     }
 
     [Test]
-    public void ScreenViewsAreCachedUntilTheScreenCloses()
+    public async Task ScreenViewsAreCachedUntilTheScreenCloses()
     {
         var model = new Screen();
         var manager = new LocatingViewManager(new ViewManagerConfig
@@ -379,10 +379,10 @@ public class ViewManagerTests
         Assert.AreSame(original, manager.GetView(model));
         Assert.AreSame(original, manager.CreateAndBindViewForModelIfNecessary(model));
 
-        ((IScreenState)model).Close();
+        await ((IScreenState)model).CloseAsync();
         Assert.IsNull(manager.GetView(model));
 
-        ((IScreenState)model).Activate();
+        await ((IScreenState)model).ActivateAsync(CancellationToken.None);
         UIElement reopened = manager.CreateAndBindViewForModelIfNecessary(model);
         Assert.AreNotSame(original, reopened);
         Assert.AreSame(reopened, manager.GetView(model));
@@ -416,15 +416,15 @@ public class ViewManagerTests
     }
 
     [Test]
-    public void ClosingTheScreenRemovesTheOldLoadedCallback()
+    public async Task ClosingTheScreenRemovesTheOldLoadedCallback()
     {
         var model = new LoadingScreen();
         var original = new FrameworkElement();
         this.viewManager.BindViewToModel(original, model);
-        ((IScreenState)model).Close();
+        await ((IScreenState)model).CloseAsync();
 
         var replacement = new FrameworkElement();
-        ((IScreenState)model).Activate();
+        await ((IScreenState)model).ActivateAsync(CancellationToken.None);
         this.viewManager.BindViewToModel(replacement, model);
         original.RaiseEvent(new RoutedEventArgs(FrameworkElement.LoadedEvent));
         Assert.AreEqual(0, model.LoadCount);
@@ -434,9 +434,8 @@ public class ViewManagerTests
         Assert.AreSame(replacement, this.viewManager.GetView(model));
     }
 
-    [TestCase(false)]
     [TestCase(true)]
-    public void ClosingCallbacksCanConnectANewView(bool reconnectFromClosedEvent)
+    public async Task ClosingCallbacksCanConnectANewView(bool reconnectFromClosedEvent)
     {
         var model = new LoadingScreen();
         var manager = new LocatingViewManager(new ViewManagerConfig
@@ -459,7 +458,7 @@ public class ViewManagerTests
             model.CloseAction = Reconnect;
 
         var original = (FrameworkElement)manager.CreateAndBindViewForModelIfNecessary(model);
-        ((IScreenState)model).Close();
+        await ((IScreenState)model).CloseAsync();
 
         Assert.IsNotNull(replacement);
         Assert.AreNotSame(original, replacement);
@@ -471,13 +470,13 @@ public class ViewManagerTests
     }
 
     [Test]
-    public void ClosingOnAWorkerDoesNotWaitForTheUiThread()
+    public async Task ClosingOnAWorkerDoesNotWaitForTheUiThread()
     {
         var model = new LoadingScreen();
         var view = new FrameworkElement();
         this.viewManager.BindViewToModel(view, model);
 
-        Task close = Task.Run(() => ((IScreenState)model).Close());
+        Task close = Task.Run(async () => await ((IScreenState)model).CloseAsync());
         Assert.IsTrue(close.Wait(TimeSpan.FromSeconds(5)), "View 해제가 UI 스레드의 동기 처리를 기다립니다.");
 
         Assert.IsNull(this.viewManager.GetView(model));

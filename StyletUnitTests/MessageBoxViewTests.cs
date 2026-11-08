@@ -1,3 +1,4 @@
+using System.Threading.Tasks;
 using Moq;
 using NUnit.Framework;
 using Stylet;
@@ -41,7 +42,7 @@ public class MessageBoxViewTests
             buttons.Single(x => Equals(x.Tag, result)).RaiseEvent(new RoutedEventArgs(ButtonBase.ClickEvent));
 
             Assert.AreEqual(result, model.ClickedButton);
-            parent.Verify(x => x.CloseItem(model, true), Times.Once);
+            parent.Verify(x => x.CloseItemAsync(model, true), Times.Once);
         }
         finally
         {

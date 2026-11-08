@@ -1,4 +1,5 @@
-﻿using Microsoft.Extensions.DependencyInjection;
+using System.Threading.Tasks;
+using Microsoft.Extensions.DependencyInjection;
 using Stylet.Samples.NavigationController.Pages;
 using System;
 
@@ -15,10 +16,11 @@ public class Bootstrapper : Bootstrapper<ShellViewModel>
         services.AddSingleton<Func<Page2ViewModel>>(sp => () => new Page2ViewModel(sp.GetRequiredService<INavigationController>()));
     }
 
-    protected override void OnLaunch()
+    protected override async Task LaunchAsync()
     {
         var navigation = this.Services.GetRequiredService<NavigationController>();
         navigation.Delegate = this.RootViewModel;
-        navigation.NavigateToPage1();
+        await navigation.NavigateToPage1Async();
+        await base.LaunchAsync();
     }
 }

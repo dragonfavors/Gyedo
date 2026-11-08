@@ -1,4 +1,5 @@
-﻿using Stylet;
+using System.Threading;
+using Stylet;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -23,29 +24,33 @@ namespace StyletIntegrationTests.WindowLifecycle
             this.Log = new BindableCollection<string>();
         }
 
-        protected override void OnViewLoaded()
+        protected override Task OnViewLoadedAsync()
         {
             this.Log.Add("View Loaded");
+            return Task.CompletedTask;
         }
 
-        protected override void OnInitialActivate()
+        protected override Task OnInitialActivatedAsync(CancellationToken cancellationToken)
         {
             this.Log.Add("Initial Activate");
+            return Task.CompletedTask;
         }
 
-        protected override void OnActivate()
+        protected override Task OnActivatedAsync(CancellationToken cancellationToken)
         {
             this.Log.Add("Activated");
+            return Task.CompletedTask;
         }
 
-        protected override void OnDeactivate()
+        protected override Task OnDeactivatedAsync()
         {
             this.Log.Add("Deactivated");
+            return Task.CompletedTask;
         }
 
-        protected override void OnClose()
+        protected override async Task OnClosedAsync()
         {
-            this.windowManager.ShowMessageBox("Closed", "Closed");
+            await this.windowManager.ShowMessageBoxAsync("Closed", "Closed");
         }
     }
 }

@@ -1,3 +1,5 @@
+using System.Threading;
+using System.Threading.Tasks;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using System;
@@ -33,8 +35,8 @@ public partial class App : Application
                 return;
 
             // 폰트·테마 등 첫 화면을 표시하기 전의 UI 초기화 위치입니다.
-            this.Host.Services.GetRequiredService<IWindowManager>()
-                .ShowWindow(this.Host.Services.GetRequiredService<MainVM>());
+            await this.Host.Services.GetRequiredService<IWindowManager>()
+                .ShowWindowAsync(this.Host.Services.GetRequiredService<MainVM>());
         }
         catch (Exception exception)
         {

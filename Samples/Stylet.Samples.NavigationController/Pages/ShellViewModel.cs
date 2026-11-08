@@ -1,4 +1,6 @@
-﻿using System;
+using System.Threading;
+using System.Threading.Tasks;
+using System;
 using Stylet;
 
 namespace Stylet.Samples.NavigationController.Pages;
@@ -12,8 +14,8 @@ public class ShellViewModel : Conductor<IScreen>, INavigationControllerDelegate
         this.HeaderViewModel = headerViewModel ?? throw new ArgumentNullException(nameof(headerViewModel));
     }
 
-    public void NavigateTo(IScreen screen)
+    public async Task NavigateToAsync(IScreen screen)
     {
-        this.ActivateItem(screen);
+        await this.ActivateItemAsync(screen);
     }
 }

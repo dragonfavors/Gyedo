@@ -1,4 +1,5 @@
-﻿using Stylet.Samples.RedditBrowser.RedditApi.Contracts;
+using System.Threading;
+using Stylet.Samples.RedditBrowser.RedditApi.Contracts;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -21,9 +22,9 @@ public class CommentCollection
         this.postId = postId;
     }
 
-    public async Task LoadAsync()
+    public async Task LoadAsync(CancellationToken cancellationToken = default)
     {
-        List<CommentsResponse> comments = await this.api.FetchCommentsAsync(this.subreddit, this.postId);
+        List<CommentsResponse> comments = await this.api.FetchCommentsAsync(this.subreddit, this.postId, cancellationToken);
         this.Comments = comments.SelectMany(x => x.Data.Children).Where(x => x.Kind == "t1").Select(x => this.ContractToComment(x.Data)).ToList();
     }
 

@@ -1,4 +1,4 @@
-﻿using CommunityToolkit.Mvvm.Input;
+using CommunityToolkit.Mvvm.Input;
 using System;
 using System.Collections.Generic;
 using System.Dynamic;
@@ -25,5 +25,5 @@ public partial class Page2ViewModel : Screen
     }
 
     [RelayCommand]
-    public void NavigateToPage1() => this.navigationController.NavigateToPage1();
+    public Task NavigateToPage1Async() => this.navigationController.NavigateToPage1Async();
 }

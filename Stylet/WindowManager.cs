@@ -1,8 +1,10 @@
-﻿using Stylet.Logging;
+using Stylet.Logging;
 using System;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Windows;
+using System.Threading.Tasks;
+using System.Linq;
 using System.Windows.Data;
 
 namespace Stylet;
@@ -12,25 +14,27 @@ namespace Stylet;
 /// </summary>
 public interface IWindowManager
 {
+    /// <summary>전체 창의 종료 허용 여부를 확인한 뒤 종료 완료를 기다립니다.</summary>
+    Task<bool> CloseAllAsync();
     /// <summary>
     /// Given a ViewModel, show its corresponding View as a window
     /// </summary>
     /// <param name="viewModel">ViewModel to show the View for</param>
-    void ShowWindow(object viewModel);
+    Task ShowWindowAsync(object viewModel);
 
     /// <summary>
     /// Given a ViewModel, show its corresponding View as a window, and set its owner
     /// </summary>
     /// <param name="viewModel">ViewModel to show the View for</param>
     /// <param name="ownerViewModel">The ViewModel for the View which should own this window</param>
-    void ShowWindow(object viewModel, object ownerViewModel);
+    Task ShowWindowAsync(object viewModel, object ownerViewModel);
 
     /// <summary>
     /// Given a ViewModel, show its corresponding View as a Dialog
     /// </summary>
     /// <param name="viewModel">ViewModel to show the View for</param>
     /// <returns>DialogResult of the View</returns>
-    bool? ShowDialog(object viewModel);
+    Task<bool?> ShowDialogAsync(object viewModel);
 
     /// <summary>
     /// Given a ViewModel, show its corresponding View as a Dialog, and set its owner
@@ -38,7 +42,7 @@ public interface IWindowManager
     /// <param name="viewModel">ViewModel to show the View for</param>
     /// <param name="ownerViewModel">The ViewModel for the View which should own this dialog</param>
     /// <returns>DialogResult of the View</returns>
-    bool? ShowDialog(object viewModel, object ownerViewModel);
+    Task<bool?> ShowDialogAsync(object viewModel, object ownerViewModel);
 
     /// <summary>
     /// Display a MessageBox
@@ -53,7 +57,7 @@ public interface IWindowManager
     /// <param name="flowDirection">The <see cref="System.Windows.FlowDirection"/> to use, overrides the <see cref="MessageBoxViewModel.DefaultFlowDirection"/></param>
     /// <param name="textAlignment">The <see cref="System.Windows.TextAlignment"/> to use, overrides the <see cref="MessageBoxViewModel.DefaultTextAlignment"/></param>
     /// <returns>The result chosen by the user</returns>
-    MessageBoxResult ShowMessageBox(string messageBoxText, string caption = "",
+    Task<MessageBoxResult> ShowMessageBoxAsync(string messageBoxText, string caption = "",
         MessageBoxButton buttons = MessageBoxButton.OK,
         MessageBoxImage icon = MessageBoxImage.None,
         MessageBoxResult defaultResult = MessageBoxResult.None,
@@ -81,6 +85,7 @@ public interface IWindowManagerConfig
 public class WindowManager : IWindowManager
 {
     private static readonly ILogger logger = LogManager.GetLogger(typeof(WindowManager));
+    private readonly List<WindowConductor> conductors = new();
     private readonly IViewManager viewManager;
     private readonly Func<IMessageBoxViewModel> messageBoxViewModelFactory;
     private readonly Func<Window> getActiveWindow;
@@ -102,9 +107,9 @@ public class WindowManager : IWindowManager
     /// Given a ViewModel, show its corresponding View as a window
     /// </summary>
     /// <param name="viewModel">ViewModel to show the View for</param>
-    public void ShowWindow(object viewModel)
+    public async Task ShowWindowAsync(object viewModel)
     {
-        this.ShowWindow(viewModel, null);
+        await this.ShowWindowAsync(viewModel, null);
     }
 
     /// <summary>
@@ -112,9 +117,9 @@ public class WindowManager : IWindowManager
     /// </summary>
     /// <param name="viewModel">ViewModel to show the View for</param>
     /// <param name="ownerViewModel">The ViewModel for the View which should own this window</param>
-    public void ShowWindow(object viewModel, object ownerViewModel)
+    public async Task ShowWindowAsync(object viewModel, object ownerViewModel)
     {
-        this.CreateWindow(viewModel, false, ownerViewModel).Show();
+        (await this.CreateWindowAsync(viewModel, false, ownerViewModel)).Show();
     }
 
     /// <summary>
@@ -122,9 +127,9 @@ public class WindowManager : IWindowManager
     /// </summary>
     /// <param name="viewModel">ViewModel to show the View for</param>
     /// <returns>DialogResult of the View</returns>
-    public bool? ShowDialog(object viewModel)
+    public async Task<bool?> ShowDialogAsync(object viewModel)
     {
-        return this.ShowDialog(viewModel, null);
+        return await this.ShowDialogAsync(viewModel, null);
     }
 
     /// <summary>
@@ -133,9 +138,10 @@ public class WindowManager : IWindowManager
     /// <param name="viewModel">ViewModel to show the View for</param>
     /// <param name="ownerViewModel">The ViewModel for the View which should own this dialog</param>
     /// <returns>DialogResult of the View</returns>
-    public bool? ShowDialog(object viewModel, object ownerViewModel)
+    public async Task<bool?> ShowDialogAsync(object viewModel, object ownerViewModel)
     {
-        return this.CreateWindow(viewModel, true, ownerViewModel).ShowDialog();
+        Window window = await this.CreateWindowAsync(viewModel, true, ownerViewModel);
+        return await window.Dispatcher.InvokeAsync(window.ShowDialog);
     }
 
     /// <summary>
@@ -151,7 +157,7 @@ public class WindowManager : IWindowManager
     /// <param name="flowDirection">The <see cref="System.Windows.FlowDirection"/> to use, overrides the <see cref="MessageBoxViewModel.DefaultFlowDirection"/></param>
     /// <param name="textAlignment">The <see cref="System.Windows.TextAlignment"/> to use, overrides the <see cref="MessageBoxViewModel.DefaultTextAlignment"/></param>
     /// <returns>The result chosen by the user</returns>
-    public MessageBoxResult ShowMessageBox(string messageBoxText, string caption = "",
+    public async Task<MessageBoxResult> ShowMessageBoxAsync(string messageBoxText, string caption = "",
         MessageBoxButton buttons = MessageBoxButton.OK,
         MessageBoxImage icon = MessageBoxImage.None,
         MessageBoxResult defaultResult = MessageBoxResult.None,
@@ -162,7 +168,7 @@ public class WindowManager : IWindowManager
     {
         IMessageBoxViewModel vm = this.messageBoxViewModelFactory();
         vm.Setup(messageBoxText, caption, buttons, icon, defaultResult, cancelResult, buttonLabels, flowDirection, textAlignment);
-        this.ShowDialog(vm);
+        await this.ShowDialogAsync(vm);
         return vm.ClickedButton;
     }
 
@@ -173,7 +179,7 @@ public class WindowManager : IWindowManager
     /// <param name="isDialog">True if the window will be used as a dialog</param>
     /// <param name="ownerViewModel">Optionally the ViewModel which owns the view which should own this window</param>
     /// <returns>Window which was created and set up</returns>
-    protected virtual Window CreateWindow(object viewModel, bool isDialog, object ownerViewModel)
+    protected virtual async Task<Window> CreateWindowAsync(object viewModel, bool isDialog, object ownerViewModel)
     {
         UIElement view = this.viewManager.CreateAndBindViewForModelIfNecessary(viewModel);
         if (view is not Window window)
@@ -234,10 +240,28 @@ public class WindowManager : IWindowManager
 
         // This gets itself retained by the window, by registering events
 #pragma warning disable CA1806 // Do not ignore method results
-        new WindowConductor(window, viewModel);
+        var conductor = new WindowConductor(this, window, viewModel, isDialog);
+        this.conductors.Add(conductor);
+        try { await ScreenExtensions.TryActivateAsync(viewModel); }
+        catch
+        {
+            await conductor.AbortAsync();
+            throw;
+        }
 #pragma warning restore CA1806 // Do not ignore method results
 
         return window;
+    }
+
+    /// <summary>모든 창의 종료 조건을 먼저 확인한 뒤 종료 완료를 기다립니다.</summary>
+    public async Task<bool> CloseAllAsync()
+    {
+        WindowConductor[] snapshot = this.conductors.ToArray();
+        foreach (WindowConductor conductor in snapshot)
+            if (!await conductor.CanCloseAsync()) return false;
+        foreach (WindowConductor conductor in snapshot)
+            if (!await conductor.CloseAsync(null, checkGuard: false)) return false;
+        return true;
     }
 
     private Window InferOwnerOf(Window window)
@@ -246,126 +270,117 @@ public class WindowManager : IWindowManager
         return ReferenceEquals(active, window) ? null : active;
     }
 
-    private class WindowConductor : IChildDelegate
+    private sealed class WindowConductor : IChildDelegate
     {
+        private readonly WindowManager manager;
         private readonly Window window;
         private readonly object viewModel;
+        private readonly bool isDialog;
+        private Task<bool> closeTask;
+        private bool allowClose;
+        private bool closed;
+        private bool lifecycleClosed;
 
-        public WindowConductor(Window window, object viewModel)
+        public WindowConductor(WindowManager manager, Window window, object viewModel, bool isDialog)
         {
+            this.manager = manager;
             this.window = window;
             this.viewModel = viewModel;
-
-            // They won't be able to request a close unless they implement IChild anyway...
-            if (this.viewModel is IChild viewModelAsChild)
-                viewModelAsChild.Parent = this;
-
-            ScreenExtensions.TryActivate(this.viewModel);
-
-            if (this.viewModel is IScreenState viewModelAsScreenState)
-            {
-                window.StateChanged += this.WindowStateChanged;
-                window.Closed += this.WindowClosed;
-            }
-
-            if (this.viewModel is IGuardClose)
-                window.Closing += this.WindowClosing;
+            this.isDialog = isDialog;
+            if (viewModel is IChild child) child.Parent = this;
+            window.StateChanged += this.WindowStateChanged;
+            window.Closing += this.WindowClosing;
+            window.Closed += this.WindowClosed;
         }
 
-        private void WindowStateChanged(object sender, EventArgs e)
+        public Task<bool> CanCloseAsync() => this.viewModel is IGuardClose guard
+            ? guard.CanCloseAsync() : Task.FromResult(true);
+
+        private async void WindowStateChanged(object sender, EventArgs e)
         {
-            switch (this.window.WindowState)
+            try
             {
-                case WindowState.Maximized:
-                case WindowState.Normal:
-                    logger.Info("Window {0} maximized/restored: activating", this.window);
-                    ScreenExtensions.TryActivate(this.viewModel);
-                    break;
-
-                case WindowState.Minimized:
-                    logger.Info("Window {0} minimized: deactivating", this.window);
-                    ScreenExtensions.TryDeactivate(this.viewModel);
-                    break;
+                if (this.window.WindowState == WindowState.Minimized)
+                    await ScreenExtensions.TryDeactivateAsync(this.viewModel);
+                else if (!this.closed && !this.allowClose)
+                    await ScreenExtensions.TryActivateAsync(this.viewModel);
             }
-        }
-
-        private void WindowClosed(object sender, EventArgs e)
-        {
-            // Logging was done in the Closing handler
-
-            this.window.StateChanged -= this.WindowStateChanged;
-            this.window.Closed -= this.WindowClosed;
-            this.window.Closing -= this.WindowClosing; // Not sure this is required
-
-            ScreenExtensions.TryClose(this.viewModel);
+            catch (OperationCanceledException) { }
+            catch (Exception exception) { logger.Error(exception, "Window state transition failed"); }
         }
 
         private async void WindowClosing(object sender, CancelEventArgs e)
         {
-            if (e.Cancel)
-                return;
+            if (this.allowClose || e.Cancel) return;
+            e.Cancel = true;
+            try { await this.CloseAsync(null); }
+            catch (Exception exception) { logger.Error(exception, "Window close failed"); }
+        }
 
-            logger.Info("ViewModel {0} close requested because its View was closed", this.viewModel);
-
-            // See if the task completed synchronously
-            System.Threading.Tasks.Task<bool> task = ((IGuardClose)this.viewModel).CanCloseAsync();
-            if (task.IsCompleted)
+        private async void WindowClosed(object sender, EventArgs e)
+        {
+            this.closed = true;
+            this.Detach();
+            // Application.Shutdown 등 Closing을 기다리지 않는 강제 종료 경로도 관찰합니다.
+            try
             {
-                // The closed event handler will take things from here if we don't cancel
-                if (!task.Result)
-                    logger.Info("Close of ViewModel {0} cancelled because CanCloseAsync returned false", this.viewModel);
-                e.Cancel = !task.Result;
+                if (!this.lifecycleClosed) await ScreenExtensions.TryCloseAsync(this.viewModel);
             }
-            else
+            catch (Exception exception) { logger.Error(exception, "Forced window close failed"); }
+            finally
             {
-                e.Cancel = true;
-                logger.Info("Delaying closing of ViewModel {0} because CanCloseAsync is completing asynchronously", this.viewModel);
-                if (await task)
-                {
-                    this.window.Closing -= this.WindowClosing;
-                    this.window.Close();
-                    // The Closed event handler handles unregistering the events, and closing the ViewModel
-                }
-                else
-                {
-                    logger.Info("Close of ViewModel {0} cancelled because CanCloseAsync returned false", this.viewModel);
-                }
+                if (this.viewModel is IChild child && ReferenceEquals(child.Parent, this)) child.Parent = null;
             }
         }
 
-        /// <summary>
-        /// Close was requested by the child
-        /// </summary>
-        /// <param name="item">Item to close</param>
-        /// <param name="dialogResult">DialogResult to close with, if it's a dialog</param>
-        async void IChildDelegate.CloseItem(object item, bool? dialogResult)
+        public Task<bool> CloseItemAsync(object item, bool? dialogResult = null) =>
+            ReferenceEquals(item, this.viewModel) ? this.CloseAsync(dialogResult) : Task.FromResult(false);
+
+        public Task<bool> CloseAsync(bool? dialogResult, bool checkGuard = true)
         {
-            if (item != this.viewModel)
+            if (this.closed) return Task.FromResult(true);
+            if (this.closeTask != null && !this.closeTask.IsCompleted) return this.closeTask;
+            return this.closeTask = this.CloseCoreAsync(dialogResult, checkGuard);
+        }
+
+        private async Task<bool> CloseCoreAsync(bool? dialogResult, bool checkGuard)
+        {
+            if (checkGuard && !await this.CanCloseAsync()) return false;
+            await ScreenExtensions.TryCloseAsync(this.viewModel);
+            this.lifecycleClosed = true;
+            // Closing 이벤트 안에서 다시 Close하지 않도록 다음 Dispatcher 차례로 넘깁니다.
+            await this.window.Dispatcher.InvokeAsync(() =>
             {
-                logger.Warn("IChildDelegate.CloseItem called with item {0} which is _not_ our ViewModel {1}", item, this.viewModel);
-                return;
-            }
+                if (this.closed) return;
+                this.allowClose = true;
+                try
+                {
+                    if (this.isDialog && dialogResult.HasValue) this.window.DialogResult = dialogResult;
+                    else this.window.Close();
+                }
+                finally { this.allowClose = false; }
+            });
+            return this.closed;
+        }
 
-            if (this.viewModel is IGuardClose guardClose && !await guardClose.CanCloseAsync())
+        public async Task AbortAsync()
+        {
+            this.Detach();
+            try { await ScreenExtensions.TryCloseAsync(this.viewModel); }
+            finally
             {
-                logger.Info("Close of ViewModel {0} cancelled because CanCloseAsync returned false", this.viewModel);
-                return;
+                if (this.viewModel is IChild child && ReferenceEquals(child.Parent, this)) child.Parent = null;
+                this.window.Close();
+                this.closed = true;
             }
+        }
 
-            logger.Info("ViewModel {0} close requested with DialogResult {1} because it called RequestClose", this.viewModel, dialogResult);
-
+        private void Detach()
+        {
             this.window.StateChanged -= this.WindowStateChanged;
-            this.window.Closed -= this.WindowClosed;
             this.window.Closing -= this.WindowClosing;
-
-            // Need to call this after unregistering the event handlers, as it causes the window
-            // to be closed
-            if (dialogResult != null)
-                this.window.DialogResult = dialogResult;
-
-            ScreenExtensions.TryClose(this.viewModel);
-
-            this.window.Close();
+            this.window.Closed -= this.WindowClosed;
+            this.manager.conductors.Remove(this);
         }
     }
 }

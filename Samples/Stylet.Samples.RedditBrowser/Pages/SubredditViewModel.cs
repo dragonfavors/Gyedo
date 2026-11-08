@@ -1,4 +1,6 @@
-﻿using CommunityToolkit.Mvvm.ComponentModel;
+using System.Threading;
+using System.Threading.Tasks;
+using CommunityToolkit.Mvvm.ComponentModel;
 using Stylet.Samples.RedditBrowser.RedditApi;
 using System;
 
@@ -19,33 +21,38 @@ public partial class SubredditViewModel : Conductor<IScreen>.StackNavigation
         this.posts = posts;
         this.postCommentsViewModelFactory = postCommentsViewModelFactory;
 
-        this.posts.PostCommentsOpened += (o, e) => this.OpenPostComments(e.PostId36);
+        this.posts.PostCommentsOpened += async (o, e) =>
+        {
+            try { await this.OpenPostComments(e.PostId36); }
+            catch (Exception exception) { Stylet.Logging.LogManager.GetLogger(this.GetType()).Error(exception); }
+        };
     }
 
-    protected override void OnInitialActivate()
+    protected override async Task OnInitialActivatedAsync(CancellationToken cancellationToken)
     {
         this.DisplayName = string.Format("/r/{0}", this.Subreddit);
         this.posts.Subreddit = this.Subreddit;
         this.posts.SortMode = this.SortMode;
 
-        this.ActivateItem(this.posts);
+        await this.ActivateItemAsync(this.posts);
     }
 
-    private void OpenPostComments(string postId36)
+    private async Task OpenPostComments(string postId36)
     {
         PostCommentsViewModel item = this.postCommentsViewModelFactory.CreatePostCommentsViewModel();
         item.PostId36 = postId36;
         item.Subreddit = this.Subreddit;
-        this.ActivateItem(item);
+        await this.ActivateItemAsync(item);
     }
 
-    protected override void ChangeActiveItem(IScreen newItem, bool closePrevious)
+    public override async Task<bool> CloseItemAsync(IScreen item)
     {
-        base.ChangeActiveItem(newItem, closePrevious);
+        bool closed = await base.CloseItemAsync(item);
 
         // If we're setting the ActiveItem to null, that means everything's been closed - close ourselves
-        if (newItem == null)
-            this.RequestClose();
+        if (closed && this.ActiveItem == null)
+            await this.RequestCloseAsync();
+        return closed;
     }
 }
 

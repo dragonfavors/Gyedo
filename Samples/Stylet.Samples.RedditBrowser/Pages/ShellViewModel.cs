@@ -1,4 +1,6 @@
-﻿using Stylet.Samples.RedditBrowser.Events;
+using System.Threading;
+using System.Threading.Tasks;
+using Stylet.Samples.RedditBrowser.Events;
 using System;
 
 namespace Stylet.Samples.RedditBrowser.Pages;
@@ -19,12 +21,14 @@ public class ShellViewModel : Conductor<IScreen>.Collection.OneActive, IHandle<O
         events.Subscribe(this);
     }
 
-    public void Handle(OpenSubredditEvent message)
+    public async void Handle(OpenSubredditEvent message)
     {
         SubredditViewModel item = this.subredditViewModelFactory.CreateSubredditViewModel();
         item.Subreddit = message.Subreddit;
         item.SortMode = message.SortMode;
-        this.ActivateItem(item);
+        try { await this.ActivateItemAsync(item); }
+        catch (OperationCanceledException) { }
+        catch (Exception exception) { Stylet.Logging.LogManager.GetLogger(this.GetType()).Error(exception); }
     }
 }
 

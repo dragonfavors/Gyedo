@@ -1,61 +1,33 @@
-﻿using System.Threading.Tasks;
+using System.Threading.Tasks;
 
 namespace Stylet;
 
-/// <summary>
-/// Conductor with a single active item, and no other items
-/// </summary>
-/// <typeparam name="T">Type of child to conduct</typeparam>
+/// <summary>화면을 교체할 때 이전 화면의 종료·폐기를 기다리는 Conductor입니다.</summary>
 public partial class Conductor<T> : ConductorBaseWithActiveItem<T> where T : class
 {
-    /// <summary>
-    /// Activate the given item, discarding the previous ActiveItem
-    /// </summary>
-    /// <param name="item">Item to active</param>
-    public override async void ActivateItem(T item)
+    /// <inheritdoc/>
+    public override Task<bool> ActivateItemAsync(T item) => this.RunNavigationAsync(async () =>
     {
-        if (item != null && item.Equals(this.ActiveItem))
-        {
-            if (this.IsActive)
-                ScreenExtensions.TryActivate(item);
-        }
-        else if (await this.CanCloseItem(this.ActiveItem)) 
-        {
-            // CanCloseItem is null-safe
-
-            this.ChangeActiveItem(item, true);
-        }
-    }
-
-    /// <summary>
-    /// Deactive the given item
-    /// </summary>
-    /// <param name="item">Item to deactivate</param>
-    public override void DeactivateItem(T item)
+        if (!ReferenceEquals(item, this.ActiveItem) && !await this.CanCloseItemAsync(this.ActiveItem))
+            return false;
+        await this.ChangeActiveItemAsync(item, true);
+        return true;
+    });
+    /// <inheritdoc/>
+    public override Task DeactivateItemAsync(T item) => this.RunNavigationAsync(async () =>
     {
-        if (item != null && item.Equals(this.ActiveItem))
-            ScreenExtensions.TryDeactivate(this.ActiveItem);
-    }
-
-    /// <summary>
-    /// Close the given item
-    /// </summary>
-    /// <param name="item">Item to close</param>
-    public override async void CloseItem(T item)
+        if (ReferenceEquals(item, this.ActiveItem))
+            await ScreenExtensions.TryDeactivateAsync(item);
+    });
+    /// <inheritdoc/>
+    public override Task<bool> CloseItemAsync(T item) => this.CloseOwnedItemAsync(item, async () =>
     {
-        if (item == null || !item.Equals(this.ActiveItem))
-            return;
-
-        if (await this.CanCloseItem(item))
-             this.ChangeActiveItem(default, true);
-    }
-
-    /// <summary>
-    /// Determine if this conductor can close. Depends on whether the ActiveItem can close
-    /// </summary>
-    /// <returns>Task indicating whether this can be closed</returns>
-    public override Task<bool> CanCloseAsync()
-    {
-        return this.CanCloseItem(this.ActiveItem);
-    }
+        if (ReferenceEquals(item, this.ActiveItem))
+            await this.ChangeActiveItemAsync(null, true);
+        else
+            await this.CloseAndCleanUpAsync(item, this.DisposeChildren);
+        return true;
+    });
+    /// <inheritdoc/>
+    public override Task<bool> CanCloseAsync() => this.CanAllItemsCloseAsync(this.OwnedItems);
 }

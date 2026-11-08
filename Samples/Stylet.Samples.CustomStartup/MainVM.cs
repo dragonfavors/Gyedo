@@ -1,3 +1,5 @@
+using System.Threading;
+using System.Threading.Tasks;
 using CommunityToolkit.Mvvm.Input;
 using Microsoft.Extensions.Configuration;
 
@@ -14,5 +16,5 @@ public partial class MainVM : Screen
     }
 
     [RelayCommand]
-    private void Close() => this.RequestClose();
+    private Task<bool> Close() => this.RequestCloseAsync();
 }

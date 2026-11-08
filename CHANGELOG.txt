@@ -4,6 +4,14 @@ Stylet Changelog
 Unreleased
 ----------
 
+ - ValidatingModelBase와 Screen을 ObservableRecipient 기반으로 연결하고 활성 상태의 메시지 수신을 자동 등록·해제합니다.
+ - 상태 변경 후 OnInitialActivatedAsync/OnActivatedAsync/OnDeactivatedAsync/OnClosedAsync를 기다리도록 타이밍을 통일합니다.
+ - 비활성화·종료 상태와 정리 완료를 구분해 실패한 정리를 재시도할 수 있게 합니다.
+
+ - Screen·Conductor·WPF 창 관리의 수명주기를 Task 기반으로 통일하고 동기 API·훅을 제거합니다(호환성 변경).
+ - 활성화 취소·비활성화·종료·자식 폐기를 순서대로 기다리며 종료 거절과 오류를 호출자에게 전달합니다.
+ - Conductor의 Items와 ActiveItem은 읽기 전용으로 바꾸고 비동기 메서드·탭 선택 연결로 변경합니다.
+ - Bootstrapper 시작·창 표시·대화상자 API도 비동기로 이전하고 정상 앱 종료 전에 창 정리를 기다립니다.
  - 앱이 직접 구성한 호스트를 연결하는 ConfigureStylet/StartStyletAsync/ShutdownStyletAsync와 커스텀 Main 샘플을 추가합니다.
  - ViewManagerConfig에서 View와 ViewModel의 이름 접미사를 설정할 수 있습니다.
  - StyletIoC 구현·전용 부트스트래퍼·테스트를 제거하고 Generic Host와 Microsoft DI를 사용합니다(호환성 변경).

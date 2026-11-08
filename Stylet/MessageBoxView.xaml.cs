@@ -5,10 +5,10 @@ namespace Stylet;
 
 public partial class MessageBoxView : Window
 {
-    private void OnButtonClick(object sender, RoutedEventArgs e)
+    private async void OnButtonClick(object sender, RoutedEventArgs e)
     {
         var button = (Button)sender;
         var model = (MessageBoxViewModel)this.DataContext;
-        model.ButtonClicked((MessageBoxResult)button.Tag);
+        await model.ButtonClickedAsync((MessageBoxResult)button.Tag);
     }
 }

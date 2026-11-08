@@ -1,4 +1,6 @@
-﻿using CommunityToolkit.Mvvm.Input;
+using System.Threading;
+using System.Threading.Tasks;
+using CommunityToolkit.Mvvm.Input;
 using System;
 
 namespace Stylet.Samples.HelloDialog;
@@ -12,14 +14,14 @@ public partial class Dialog1ViewModel : Screen
         this.DisplayName = "I'm Dialog 1";
     }
 
-    public void Close()
+    public async Task Close()
     {
-        this.RequestClose(null);
+        await this.RequestCloseAsync(null);
     }
 
     [RelayCommand]
-    public void Save()
+    public async Task Save()
     {
-        this.RequestClose(true);
+        await this.RequestCloseAsync(true);
     }
 }

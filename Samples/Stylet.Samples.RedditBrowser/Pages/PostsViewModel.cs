@@ -1,4 +1,5 @@
-﻿using CommunityToolkit.Mvvm.ComponentModel;
+using System.Threading;
+using CommunityToolkit.Mvvm.ComponentModel;
 using System.Threading.Tasks;
 using CommunityToolkit.Mvvm.Input;
 using Stylet.Samples.RedditBrowser.RedditApi;
@@ -31,23 +32,17 @@ public partial class PostsViewModel : Screen
         this.client = client;
     }
 
-    protected override async void OnInitialActivate()
+    protected override async Task OnActivatedAsync(CancellationToken cancellationToken)
     {
-        // Really un-advanced - just close
-        try
-        {
-            this.PostCollection = await this.client.GetPostsAsync(this.Subreddit, this.SortMode);
-        }
-        catch (Exception)
-        {
-            this.RequestClose();
-        }
+        var result = await this.client.GetPostsAsync(this.Subreddit, this.SortMode, cancellationToken);
+        cancellationToken.ThrowIfCancellationRequested();
+        this.PostCollection = result;
     }
 
     [RelayCommand]
-    public void Close()
+    public async Task Close()
     {
-        this.RequestClose();
+        await this.RequestCloseAsync();
     }
 
     public bool CanNext => this.PostCollection != null && this.PostCollection.HasNext;

@@ -1,4 +1,5 @@
-﻿using CommunityToolkit.Mvvm.Input;
+using System.Threading;
+using CommunityToolkit.Mvvm.Input;
 using Stylet;
 using System;
 using System.Collections.Generic;
@@ -26,9 +27,9 @@ namespace StyletIntegrationTests.ShowDialogAndDialogResult
         }
 
         [RelayCommand]
-        public void Close()
+        public async Task Close()
         {
-            this.RequestClose(this.SelectedDesiredResult.Value);
+            await this.RequestCloseAsync(this.SelectedDesiredResult.Value);
         }
     }
 }

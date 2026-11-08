@@ -1,194 +1,72 @@
-﻿using System.Collections;
 using System.Collections.Generic;
-using System.Collections.Specialized;
+using System.Collections.ObjectModel;
 using System.Linq;
+using System.Threading;
 using System.Threading.Tasks;
 
 namespace Stylet;
 
 public partial class Conductor<T>
 {
-    /// <summary>
-    /// Contains specific Conductor{T} collection types
-    /// </summary>
     public partial class Collection
     {
-        /// <summary>
-        /// Conductor which has many items, all of which active at the same time
-        /// </summary>
+        /// <summary>소유한 모든 화면을 함께 활성화합니다.</summary>
         public class AllActive : ConductorBase<T>
         {
             private readonly BindableCollection<T> items = new();
-
-            private List<T> itemsBeforeReset;
-
-            /// <summary>
-            /// Gets all items associated with this conductor
-            /// </summary>
-            public IObservableCollection<T> Items => this.items;
-
-            /// <summary>
-            /// Initialises a new instance of the <see cref="Conductor{T}.Collection.AllActive"/> class
-            /// </summary>
-            public AllActive()
+            /// <summary>변경은 ActivateItemAsync/CloseItemAsync/ClearAsync를 사용합니다.</summary>
+            public ReadOnlyObservableCollection<T> Items { get; }
+            /// <summary>빈 화면 목록을 생성합니다.</summary>
+            public AllActive() => this.Items = new(this.items);
+            /// <inheritdoc/>
+            public override IEnumerable<T> GetChildren() => this.items.ToArray();
+            /// <inheritdoc/>
+            public override Task<bool> ActivateItemAsync(T item) => this.RunNavigationAsync(async () =>
             {
-                this.items.CollectionChanging += (o, e) =>
-                {
-                    switch (e.Action)
-                    {
-                        case NotifyCollectionChangedAction.Reset:
-                            this.itemsBeforeReset = this.items.ToList();
-                            break;
-                    }
-                };
-
-                this.items.CollectionChanged += (o, e) =>
-                {
-                    switch (e.Action)
-                    {
-                        case NotifyCollectionChangedAction.Add:
-                            this.ActivateAndSetParent(e.NewItems);
-                            break;
-
-                        case NotifyCollectionChangedAction.Remove:
-                            this.CloseAndCleanUp(e.OldItems, this.DisposeChildren);
-                            break;
-
-                        case NotifyCollectionChangedAction.Replace:
-                            this.ActivateAndSetParent(e.NewItems);
-                            this.CloseAndCleanUp(e.OldItems, this.DisposeChildren);
-                            break;
-
-                        case NotifyCollectionChangedAction.Reset:
-                            this.ActivateAndSetParent(this.items.Except(this.itemsBeforeReset));
-                            this.CloseAndCleanUp(this.itemsBeforeReset.Except(this.items), this.DisposeChildren);
-                            this.itemsBeforeReset = null;
-                            break;
-                    }
-                };
-            }
-
-            /// <summary>
-            /// Active all items in a given collection if appropriate, and set the parent of all items to this
-            /// </summary>
-            /// <param name="items">Items to manipulate</param>
-            protected virtual void ActivateAndSetParent(IEnumerable items)
-            {
-                this.SetParentAndSetActive(items, this.IsActive);
-            }
-
-            /// <summary>
-            /// Activates all items whenever this conductor is activated
-            /// </summary>
-            protected override void OnActivate()
-            {
-                // Copy the list, in case someone tries to modify it as a result of being activated
-                var itemsToActivate = this.items.OfType<IScreenState>().ToList();
-                foreach (IScreenState item in itemsToActivate)
-                {
-                    item.Activate();
-                }
-            }
-
-            /// <summary>
-            /// Deactivates all items whenever this conductor is deactivated
-            /// </summary>
-            protected override void OnDeactivate()
-            {
-                // Copy the list, in case someone tries to modify it as a result of being activated
-                var itemsToDeactivate = this.items.OfType<IScreenState>().ToList();
-                foreach (IScreenState item in itemsToDeactivate)
-                {
-                    item.Deactivate();
-                }
-            }
-
-            /// <summary>
-            /// Close, and clean up, all items when this conductor is closed
-            /// </summary>
-            protected override void OnClose()
-            {
-                // Copy the list, in case someone tries to modify it as a result of being closed
-                // We've already been deactivated by this point    
-                var itemsToClose = this.items.ToList();
-                foreach (T item in itemsToClose)
-                {
-                    this.CloseAndCleanUp(item, this.DisposeChildren);
-                }
-                
-                this.items.Clear();
-            }
-
-            /// <summary>
-            /// Determine if the conductor can close. Returns true if and when all items can close
-            /// </summary>
-            /// <returns>A Task indicating whether this conductor can close</returns>
-            public override Task<bool> CanCloseAsync()
-            {
-                return this.CanAllItemsCloseAsync(this.items);
-            }
-
-            /// <summary>
-            /// Activate the given item, and add it to the Items collection
-            /// </summary>
-            /// <param name="item">Item to activate</param>
-            public override void ActivateItem(T item)
-            {
-                if (item == null)
-                    return;
-
+                if (item == null) return false;
                 this.EnsureItem(item);
-
-                if (this.IsActive)
-                    ScreenExtensions.TryActivate(item);
-                else
-                    ScreenExtensions.TryDeactivate(item);
-            }
-
-            /// <summary>
-            /// Deactive the given item
-            /// </summary>
-            /// <param name="item">Item to deactivate</param>
-            public override void DeactivateItem(T item)
+                if (this.IsActive) await this.ActivateChildAsync(item, this.ActivationCancellationToken);
+                else await ScreenExtensions.TryDeactivateAsync(item);
+                return true;
+            });
+            /// <inheritdoc/>
+            public override Task DeactivateItemAsync(T item) => this.RunNavigationAsync(() => ScreenExtensions.TryDeactivateAsync(item));
+            /// <inheritdoc/>
+            public override Task<bool> CloseItemAsync(T item) => this.CloseOwnedItemAsync(item, async () =>
             {
-                ScreenExtensions.TryDeactivate(item);
-            }
-
-            /// <summary>
-            /// Close a particular item, removing it from the Items collection
-            /// </summary>
-            /// <param name="item">Item to close</param>
-            public override async void CloseItem(T item)
+                await this.CloseAndCleanUpAsync(item, this.DisposeChildren);
+                this.items.Remove(item);
+                return true;
+            });
+            /// <summary>전체 종료 허용 여부를 확인하고 종료·폐기를 기다립니다.</summary>
+            public Task<bool> ClearAsync() => this.ClearOwnedItemsAsync(this.CloseChildrenAsync);
+            /// <inheritdoc/>
+            public override Task<bool> CanCloseAsync() => this.CanAllItemsCloseAsync(this.items);
+            /// <inheritdoc/>
+            protected override Task OnActivatedAsync(CancellationToken cancellationToken) => this.RunNavigationAsync(async () =>
             {
-                if (item == null)
-                    return;
-
-                if (await this.CanCloseItem(item))
+                foreach (T item in this.items.ToArray()) await this.ActivateChildAsync(item, cancellationToken);
+            });
+            /// <inheritdoc/>
+            protected override Task OnDeactivatedAsync() => this.RunNavigationAsync(async () =>
+            {
+                foreach (T item in this.items.ToArray()) await ScreenExtensions.TryDeactivateAsync(item);
+            });
+            /// <inheritdoc/>
+            protected override Task OnClosedAsync() => this.RunNavigationAsync(this.CloseChildrenAsync);
+            private async Task CloseChildrenAsync()
+            {
+                foreach (T item in this.items.ToArray())
                 {
-                    this.CloseAndCleanUp(item, this.DisposeChildren);
+                    await this.CloseAndCleanUpAsync(item, this.DisposeChildren);
                     this.items.Remove(item);
                 }
             }
-
-            /// <summary>
-            /// Returns all children of this parent
-            /// </summary>
-            /// <returns>All children associated with this conductor</returns>
-            public override IEnumerable<T> GetChildren()
+            /// <inheritdoc/>
+            protected override void EnsureItem(T item)
             {
-                return this.items;
-            }
-
-            /// <summary>
-            /// Ensure an item is ready to be activated, by adding it to the items collection, as well as setting it up
-            /// </summary>
-            /// <param name="newItem">Item to ensure</param>
-            protected override void EnsureItem(T newItem)
-            {
-                if (!this.items.Contains(newItem))
-                    this.items.Add(newItem);
-
-                base.EnsureItem(newItem);
+                base.EnsureItem(item);
+                if (!this.items.Contains(item)) this.items.Add(item);
             }
         }
     }

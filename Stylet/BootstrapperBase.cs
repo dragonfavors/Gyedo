@@ -1,10 +1,12 @@
-﻿using Stylet.Logging;
+using Stylet.Logging;
 using Stylet.Xaml;
 using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
 using System.Windows;
+using System.Threading;
+using System.Threading.Tasks;
 using System.Windows.Threading;
 
 namespace Stylet;
@@ -37,7 +39,7 @@ public abstract class BootstrapperBase : IBootstrapper, IWindowManagerConfig, ID
     /// <remarks>
     /// If you're constructing the bootstrapper yourself, call this manully and pass in the Application
     /// (probably <see cref="Application.Current"/>). Stylet will start when <see cref="Application.Startup"/>
-    /// is fired. If no Application is available, do not call this but instead call <see cref="Start(string[])"/>.
+    /// is fired. If no Application is available, do not call this but instead call <see cref="StartAsync(string[], CancellationToken)"/>.
     /// (In this case, note that the <see cref="Execute"/> methods will all dispatch synchronously, unless you
     /// set <see cref="Execute.Dispatcher"/> yourself).
     /// </remarks>
@@ -49,7 +51,7 @@ public abstract class BootstrapperBase : IBootstrapper, IWindowManagerConfig, ID
         // Use the current application's dispatcher for Execute
         Execute.Dispatcher = new ApplicationDispatcher(this.Application.Dispatcher);
 
-        this.Application.Startup += (o, e) => this.Start(e.Args);
+        this.Application.Startup += async (o, e) => await this.StartAsync(e.Args);
         // Make life nice for the app - they can handle these by overriding Bootstrapper methods, rather than adding event handlers
         this.Application.Exit += (o, e) =>
         {
@@ -73,7 +75,8 @@ public abstract class BootstrapperBase : IBootstrapper, IWindowManagerConfig, ID
     /// (e.g. because an Application isn't available), you must call this yourself.
     /// </remarks>
     /// <param name="args">Command-line arguments used to start this executable</param>
-    public virtual void Start(string[] args)
+    /// <param name="cancellationToken">시작 취소 토큰입니다.</param>
+    public virtual async Task StartAsync(string[] args, CancellationToken cancellationToken = default)
     {
         // Set this before anything else, so everything can use it
         this.Args = args;
@@ -85,7 +88,7 @@ public abstract class BootstrapperBase : IBootstrapper, IWindowManagerConfig, ID
         this.Application?.Resources.Add(View.ViewManagerResourceKey, this.GetInstance(typeof(IViewManager)));
 
         this.Configure();
-        this.Launch();
+        await this.LaunchAsync();
         this.OnLaunch();
     }
 
@@ -95,17 +98,17 @@ public abstract class BootstrapperBase : IBootstrapper, IWindowManagerConfig, ID
     protected virtual void Configure() { }
 
     /// <summary>
-    /// Called when the application is launched. Should display the root view using <see cref="DisplayRootView(object)"/>
+    /// Called when the application is launched. Should display the root view using <see cref="DisplayRootViewAsync(object)"/>
     /// </summary>
-    protected abstract void Launch();
+    protected abstract Task LaunchAsync();
 
     /// <summary>
     /// Launch the root view
     /// </summary>
-    protected virtual void DisplayRootView(object rootViewModel)
+    protected virtual async Task DisplayRootViewAsync(object rootViewModel)
     {
         var windowManager = (IWindowManager)this.GetInstance(typeof(IWindowManager));
-        windowManager.ShowWindow(rootViewModel);
+        await windowManager.ShowWindowAsync(rootViewModel);
     }
 
     /// <summary>

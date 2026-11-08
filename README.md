@@ -50,7 +50,7 @@ Stylet은 Antony Male이 만든 WPF용 ViewModel 중심 MVVM 프레임워크입�
 
 WPF 프로젝트가 코어를 참조합니다. 코어에는 UI 프레임워크나 DI 컨테이너 구현이 없으며, 공통 타입의 네임스페이스는 `Stylet`을 사용합니다. WPF 패키지·어셈블리 이름도 기존 `Stylet`을 유지합니다.
 
-`Screen`은 실제 View를 보관하지 않습니다. WPF `ViewManager`가 화면의 View를 연결·재사용하고, `ViewReleaseRequested` 알림으로 종료 콜백 전에 연결을 해제합니다. 일반 ViewModel은 기존처럼 여러 View에 표시할 수 있습니다. View 로딩은 UI 타입이 없는 `IViewLifecycleAware.ViewLoaded()`를 통해 기존 `OnViewLoaded()` 훅에 전달하며, 화면 활성화와 별개입니다.
+`Screen`은 실제 View를 보관하지 않습니다. WPF `ViewManager`가 화면의 View를 연결·재사용하고, `OnClosedAsync()`를 호출하기 전에 `ViewReleaseRequested` 알림으로 연결을 해제합니다. 일반 ViewModel은 기존처럼 여러 View에 표시할 수 있습니다. View 로딩은 UI 타입이 없는 `IViewLifecycleAware.ViewLoadedAsync()`를 통해 `OnViewLoadedAsync()` 훅에 전달하며, 화면 활성화와 별개입니다.
 
 공통 `IDispatcher`와 `Execute`는 유지하고, WPF `ApplicationDispatcher`는 Bootstrapper에서 연결합니다. 창·대화상자 API는 이번 단계에서 WPF 구현에 두며, 공통 비동기 대화상자 API는 후속 작업입니다.
 
@@ -62,11 +62,11 @@ WPF 프로젝트가 코어를 참조합니다. 코어에는 UI 프레임워크�
 |---|---|---|
 | 대상 프레임워크 | .NET Framework 및 여러 .NET 버전 | 공통 코어 `net10.0`, WPF 구현 `net10.0-windows` |
 | UI 의존성 | 화면 모델에 WPF View 타입 포함 | 공통 코어와 WPF 구현 분리 |
-| 화면 수명주기와 탐색 | `Screen`, `Conductor` 사용 | 유지 |
+| 화면 수명주기와 탐색 | `Screen`, `Conductor` 사용 | 초기화·활성화·비활성화·종료와 자식 정리를 비동기로 통일 |
 | View 탐색·생성·연결 | `ViewManager`, `View.Model` 사용 | 유지 |
 | 창·대화상자 관리 | `WindowManager` 사용 | 유지 |
 | 속성 알림 | 자체 `PropertyChangedBase`, `SetAndNotify` 사용 | Toolkit의 `ObservableObject`, `SetProperty`, `[ObservableProperty]` 사용 |
-| 검증·메시징 | Stylet 자체 구현 사용 | 유지 |
+| 검증·메시징 | Stylet 자체 구현 사용 | 기존 검증·EventAggregator 유지, ObservableRecipient 메시지 구독 연동 |
 | DI | 자체 StyletIoC 제공 | StyletIoC 제거, Generic Host의 Microsoft DI 사용 |
 | 앱 시작·종료 | Bootstrapper 중심의 동기 처리 | Hosted Service 시작·종료와 호스트 폐기를 비동기로 대기 |
 | 이전 버전 호환 API | 폐기 예정 별칭과 동기 종료 확인 API 포함 | 제거하고 현행 API로 통일 |
@@ -78,6 +78,92 @@ WPF 프로젝트가 코어를 참조합니다. 코어에는 UI 프레임워크�
 | 기본 메시지 박스 | Action으로 버튼 클릭 처리 | View의 버튼 이벤트로 처리 |
 | 샘플 | Action 사용 예제 포함 | Toolkit 생성 명령과 일반 이벤트 처리 사용. Fody 속성 알림을 Toolkit 생성 속성으로 전환 |
 | README | 영어 | 한국어로 원본과 변경 사항 안내 |
+
+## 화면 라이프사이클 한눈에 보기
+
+**상태 변경 → 비동기 훅 대기 → 완료 이벤트 → 호출한 Task 완료** 순서입니다.
+
+예를 들어 `OnActivatedAsync()` 안에서는 이미 `IsActive == true`입니다. 하지만 활성화 처리가 끝났는지는 `await ActivateAsync()`로 확인합니다.
+
+```mermaid
+stateDiagram-v2
+    [*] --> Deactivated: 생성
+    Deactivated --> Active: ActivateAsync
+    Active --> Deactivated: DeactivateAsync
+    Deactivated --> Closed: CloseAsync
+    Closed --> Active: ActivateAsync로 다시 초기화
+```
+
+활성 화면에서 `CloseAsync()`를 호출하면 비활성화를 먼저 수행한 뒤 종료합니다. **닫기(`Closed`)와 객체 폐기(`Dispose`)는 별개**이며, 이미 폐기한 화면은 다시 열지 않습니다.
+
+| 하고 싶은 일 | 호출 | 기다리는 순서 |
+|---|---|---|
+| 처음 열기 | `await screen.ActivateAsync(token)` | `Active`·메시지 구독 설정 → `OnInitialActivatedAsync(token)` → `OnActivatedAsync(token)` |
+| 잠시 숨기기·탭 전환 | `await screen.DeactivateAsync()` | 활성화 취소·대기 → `Deactivated`·메시지 구독 해제 → `OnDeactivatedAsync()` |
+| 다시 활성화 | `await screen.ActivateAsync(token)` | `Active`·메시지 구독 설정 → `OnActivatedAsync(token)` |
+| 사용자 요청으로 닫기 | `await screen.RequestCloseAsync()` | 부모의 `CanCloseAsync()` 확인 → 허용되면 아래 종료 과정. 거절하면 `false` |
+| 종료 확정 | `await screen.CloseAsync()` | 활성화 취소·정리 → 필요 시 비활성화 → View 해제 → `Closed` → `OnClosedAsync()` |
+| 자식 종료·폐기 | `await conductor.CloseItemAsync(child)` | 종료 조건 확인 → 자식 종료 완료 → 부모 연결 해제 → 설정에 따라 `DisposeAsync()` 또는 `Dispose()` |
+
+처음 열 때는 초기화와 활성화 훅을 모두 실행하고, 탭으로 돌아올 때는 활성화 훅만 실행합니다. 닫았다 다시 열면 초기화부터 실행합니다.
+
+앱에서 닫기를 요청할 때는 `await RequestCloseAsync()`를 사용합니다. 부모가 종료를 거절하면 `false`를 반환합니다. `Screen`은 자기 상태를, `Conductor`는 자식을, WPF `WindowManager`는 실제 창을 관리합니다.
+
+<details>
+<summary>구현 예제, 메시지 구독, 오류 처리와 이전 방법</summary>
+
+`OnStateChangedAsync`는 상태 변경 직후 실행합니다. `Activated`, `Deactivated`, `Closed`와 뒤따르는 `StateChanged` 이벤트는 해당 비동기 훅이 성공한 뒤 발생합니다. 초기화가 실패하면 다음 활성화에서 다시 시도합니다.
+
+### ObservableRecipient와 메시지 구독
+
+상속 구조는 `ObservableObject → ObservableRecipient → ValidatingModelBase → Screen → Conductor`입니다. Toolkit의 실제 `ObservableRecipient`를 사용하며 `IRecipient<TMessage>` 구현을 활성화 시 자동 등록하고 비활성화 시 해제합니다. 구독 연결은 비동기 훅보다 먼저 수행합니다.
+
+기본 전달자는 `WeakReferenceMessenger.Default`입니다. 전달자를 분리하려면 Screen을 직접 상속한 VM 생성자에서 `base(validator, messenger)`를 호출합니다. `Screen.IsActive`는 읽기 전용으로 제공하므로 상태 변경에는 `ActivateAsync`·`DeactivateAsync`를 사용하세요. Toolkit의 동기 `OnActivated`·`OnDeactivated`는 구독 연결용으로 고정하고, 앱은 비동기 훅을 재정의합니다.
+
+### ViewModel에서 구현할 부분
+
+```csharp
+protected override async Task OnActivatedAsync(CancellationToken cancellationToken)
+{
+    var result = await this.service.LoadAsync(cancellationToken);
+    cancellationToken.ThrowIfCancellationRequested();
+    this.Items = result;
+}
+
+protected override Task OnClosedAsync() => this.service.FlushAsync();
+```
+
+위 코드는 앱의 `service`와 `Items`를 사용하는 예입니다. `System.Threading`과 `System.Threading.Tasks`가 필요합니다. `Conductor`의 훅을 재정의한다면 `await base.OnActivatedAsync(token)` 등도 호출해 자식 처리를 유지합니다. 생성자에서 화면을 전환하던 코드는 `OnInitialActivatedAsync`로 옮깁니다.
+
+### 취소·실패·대기 규칙
+
+- 같은 화면의 상태 전환과 같은 Conductor의 탐색은 순서대로 처리합니다. 로딩 중 닫기가 허용되면 **로딩 취소를 먼저 요청한 뒤** 완료를 기다리므로 종료가 로딩 대기열 뒤에 묶이지 않습니다.
+- 취소는 협력 방식입니다. 서비스에 토큰을 전달하고 결과 반영 전에도 확인하세요. 취소를 무시하는 작업이 끝나지 않으면 종료도 기다립니다.
+- 활성화 실패·취소 시 `Deactivated`로 되돌리고 메시지 구독을 해제한 뒤 `OnDeactivatedAsync()`로 정리합니다. 활성화 완료 이벤트는 보내지 않고 오류를 호출자에게 전달합니다.
+- 비활성화·종료 정리가 실패하면 이미 바뀐 `Deactivated`·`Closed` 상태는 유지하지만 완료 이벤트는 보내지 않습니다. 같은 메서드를 다시 호출하면 실패한 훅을 재시도합니다. 실패한 종료 정리는 `CloseAsync()`로 끝낸 뒤 다시 활성화해야 합니다. 여러 자식 중 이미 끝난 정리는 되돌리지 않습니다.
+- `RequestCloseAsync()`와 `CloseItemAsync()`는 종료 조건을 확인합니다. 직접 호출하는 `CloseAsync()`와 `ScreenExtensions.TryCloseAsync()`는 **종료 확인을 우회**하는 하위 API입니다.
+- 훅 안에서 자기 자신의 상태 전환을 다시 `await`하면 예외가 발생합니다. 화면을 여는 훅에서 같은 화면을 다시 닫거나, 자식 활성화 훅에서 부모 탐색을 기다리지 마세요.
+- 창은 활성화 완료 후 표시합니다. 오래 걸리는 데이터 조회는 별도 Toolkit 명령과 로딩 UI로 분리할 수 있습니다. 임의의 명령·백그라운드 작업은 수명주기 Task에 자동 포함되지 않습니다.
+- `OnViewLoadedAsync()`는 View의 `Loaded` 알림을 처리하며 같은 화면의 수명주기 작업과 순서대로 실행됩니다. 활성화 훅에서 아직 표시되지 않은 View의 `Loaded`를 기다리면 안 됩니다.
+
+### 탐색과 WPF에서 달라진 호출
+
+| 이전 | 현재 |
+|---|---|
+| `ActivateItem(item)` / `ActiveItem = item` | `await ActivateItemAsync(item)` — `ActiveItem`은 읽기 전용 |
+| `DeactivateItem(item)` / `CloseItem(item)` | `await DeactivateItemAsync(item)` / `await CloseItemAsync(item)` |
+| `Items.Add/Remove/Clear` | 읽기 전용 목록. OneActive는 `AddItemAsync`, 닫기는 `CloseItemAsync`·`ClearAsync` |
+| `GoBack()` | `await GoBackAsync()` |
+| `RequestClose(result)` | `await RequestCloseAsync(result)` |
+| `ShowWindow` / `ShowDialog` / `ShowMessageBox` | 각각 `await ShowWindowAsync` / `await ShowDialogAsync` / `await ShowMessageBoxAsync` |
+| 동기 `OnInitialActivate` / `OnActivate` / `OnDeactivate` / `OnClose` | 각각 `OnInitialActivatedAsync` / `OnActivatedAsync` / `OnDeactivatedAsync` / `OnClosedAsync` |
+| `ActivateWith` / `DeactivateWith` / `CloseWith` / `ConductWith` | Conductor의 소유 관계 또는 훅 안의 명시적인 `await` 호출 |
+
+`AllActive`는 `ActivateItemAsync`로 자식을 추가합니다. 기본 탭 스타일은 `ActiveItem`을 읽고 선택 변경을 비동기 탐색으로 연결합니다. 탐색 실패 시 이전 선택을 복구합니다.
+
+WPF는 닫기 이벤트를 잠시 취소하고 VM의 종료가 끝난 뒤 실제 창을 닫습니다. 창 이벤트에서 발생한 오류는 로그에 남기며, 명시적으로 호출한 비동기 API는 호출자에게 오류를 전달합니다. 정상 앱 종료는 `ShutdownStyletAsync()` 또는 `ShutdownAsync()`로 창 정리 → 호스트 종료·폐기 → WPF 종료 순서를 기다립니다. 강제 프로세스 종료에는 이 완료를 보장할 수 없습니다.
+
+</details>
 
 ## 템플릿 없이 WPF 앱 설정
 
@@ -179,8 +265,8 @@ if (!await this.StartStyletAsync(this.Host))
     return;
 
 // 폰트·테마 등 첫 화면 표시 전의 UI 초기화
-this.Host.Services.GetRequiredService<IWindowManager>()
-    .ShowWindow(this.Host.Services.GetRequiredService<MainVM>());
+await this.Host.Services.GetRequiredService<IWindowManager>()
+    .ShowWindowAsync(this.Host.Services.GetRequiredService<MainVM>());
 ```
 
 - 위 이름 설정은 `MainVM → MainView`를 뜻합니다. 기본값은 `ViewModel → View`이며, `ViewNameSuffix`와 `ViewAssemblies`도 설정할 수 있습니다.
@@ -267,7 +353,7 @@ RedditBrowser의 페이지 이동과 통합 테스트 앱의 디스패처 명령
 
 ### Toolkit 속성 알림
 
-현재 상속 구조는 `ObservableObject → ValidatingModelBase → Screen → Conductor`입니다. 검증이 필요 없는 일반 모델과 `LabelledValue<T>`는 `ObservableObject`를 직접 사용합니다.
+현재 상속 구조는 `ObservableObject → ObservableRecipient → ValidatingModelBase → Screen → Conductor`입니다. 검증이 필요 없는 일반 모델과 `LabelledValue<T>`는 `ObservableObject`를 직접 사용합니다.
 
 특성 기반 생성기를 사용하는 프로젝트에는 다음 패키지 참조를 추가합니다.
 
@@ -312,12 +398,12 @@ ModelValidation과 RedditBrowser의 Fody 의존성·설정은 제거했습니다
 | 제거한 API | 사용할 API |
 |---|---|
 | `Screen.State` | `Screen.ScreenState` |
-| `Screen.TryClose(...)` | `Screen.RequestClose(...)` |
+| `Screen.TryClose(...)` | `Screen.RequestCloseAsync(...)` |
 | `Screen.CanClose()` 재정의 | `Screen.CanCloseAsync()` 재정의 |
 | `ScreenState.Initial` | 새 화면의 초기 상태인 `ScreenState.Deactivated` |
 | `BindWeak(...)` | `Bind(...)` 또는 `BindAndInvoke(...)`, 필요 시 반환된 바인딩의 `Unbind()` 호출 |
 
-`Conductor`에 별도 종료 조건을 추가할 때는 `CanCloseAsync()`에서 `base.CanCloseAsync()`의 결과도 확인해 자식 화면의 종료 조건을 보존합니다. `ScreenExtensions.TryClose`는 화면 수명주기에 사용하는 별도 API로 유지합니다.
+`Conductor`에 별도 종료 조건을 추가할 때는 `CanCloseAsync()`에서 `base.CanCloseAsync()`의 결과도 확인해 자식 화면의 종료 조건을 보존합니다. `ScreenExtensions.TryCloseAsync`는 종료 확인을 우회하는 하위 상태 전환 API입니다.
 
 사용하지 않는 .NET Framework 설치·실행 설정과 이전 형식의 단일 파일 추출 작업도 제거했습니다. NuGet 패키지의 안내 문서는 이 README로 통일합니다.
 

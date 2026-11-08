@@ -1,3 +1,4 @@
+using System.Threading;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using Moq;
@@ -86,7 +87,7 @@ public partial class ToolkitIntegrationTests
     }
 
     [Test]
-    public void GeneratedPropertiesWorkOnConductors()
+    public async Task GeneratedPropertiesWorkOnConductors()
     {
         var conductor = new GeneratedConductor();
         string changed = null;
@@ -96,8 +97,8 @@ public partial class ToolkitIntegrationTests
         Assert.AreEqual(nameof(GeneratedConductor.Status), changed);
 
         var child = new Screen();
-        ((IScreenState)conductor).Activate();
-        conductor.ActivateItem(child);
+        await ((IScreenState)conductor).ActivateAsync(CancellationToken.None);
+        await conductor.ActivateItemAsync(child);
         Assert.AreSame(child, conductor.ActiveItem);
         Assert.IsTrue(child.IsActive);
     }

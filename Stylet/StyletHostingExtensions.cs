@@ -143,11 +143,12 @@ public static class StyletHostingExtensions
 
         private protected override IHost BuildHost(string[] args) => this.ProvidedHost;
 
-        protected override void Launch()
+        protected override Task LaunchAsync()
         {
             var source = new Uri("pack://application:,,,/Stylet;component/Xaml/StyletResourceDictionary.xaml");
             if (!this.Application.Resources.MergedDictionaries.Any(x => x.Source == source))
                 this.Application.Resources.MergedDictionaries.Insert(0, new ResourceDictionary { Source = source });
+            return Task.CompletedTask;
         }
     }
 }
