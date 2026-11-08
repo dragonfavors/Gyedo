@@ -9,10 +9,13 @@ namespace Stylet;
 /// <summary>초기화·활성화·비활성화·종료 완료를 기다릴 수 있는 화면 모델입니다.</summary>
 public class Screen : ValidatingModelBase, IScreen, IViewLifecycleAware
 {
+    private static readonly WeakReferenceMessenger defaultLongMessenger = new();
+    private static readonly WeakReferenceMessenger defaultAlwaysMessenger = new();
     private readonly AsyncOperationQueue lifecycle = new();
     private CancellationTokenSource activationCancellation;
     private long activationVersion;
     private bool initialized;
+    private bool longMessengerRegistered;
     private bool deactivationPending;
     private bool closePending;
     private ScreenState deactivationPreviousState;
@@ -27,7 +30,23 @@ public class Screen : ValidatingModelBase, IScreen, IViewLifecycleAware
     /// <summary>검증기를 연결해 화면을 생성합니다.</summary>
     public Screen(IModelValidator validator) : this(validator, WeakReferenceMessenger.Default) { }
     /// <summary>검증기와 메시지 전달자를 연결합니다.</summary>
-    public Screen(IModelValidator validator, IMessenger messenger) : base(validator, messenger) => this.DisplayName = this.GetType().FullName;
+    public Screen(IModelValidator validator, IMessenger messenger) : base(validator, messenger)
+    {
+        this.DisplayName = this.GetType().FullName;
+        this.AlwaysMessenger.RegisterAll(this);
+    }
+
+    /// <summary>
+    /// 최초 활성화 훅 실행 전부터 종료 훅 실행 전까지 수신하는 공용 약한 참조 메신저입니다.
+    /// 비활성화와 활성화 실패·취소에서는 구독을 유지하고, 닫았다 다시 열면 재등록합니다.
+    /// </summary>
+    public IMessenger LongMessenger => defaultLongMessenger;
+
+    /// <summary>
+    /// 생성자에서 수신을 등록하는 공용 약한 참조 메신저입니다. 비활성화·종료 후에도 수신합니다.
+    /// 메신저는 인스턴스를 살려 두지 않으므로 외부 참조가 사라지면 가비지 수집할 수 있습니다.
+    /// </summary>
+    public IMessenger AlwaysMessenger => defaultAlwaysMessenger;
     /// <inheritdoc/>
     public string DisplayName { get => this.displayName; set => this.SetProperty(ref this.displayName, value); }
     /// <inheritdoc/>
@@ -89,6 +108,11 @@ public class Screen : ValidatingModelBase, IScreen, IViewLifecycleAware
                 await this.SetStateAsync(ScreenState.Active);
                 if (initial)
                 {
+                    if (!this.longMessengerRegistered)
+                    {
+                        this.LongMessenger.RegisterAll(this);
+                        this.longMessengerRegistered = true;
+                    }
                     await this.OnInitialActivatedAsync(cancellation.Token);
                     cancellation.Token.ThrowIfCancellationRequested();
                     this.initialized = true;
@@ -154,6 +178,8 @@ public class Screen : ValidatingModelBase, IScreen, IViewLifecycleAware
                 this.closePreviousState = this.ScreenState;
                 this.ViewReleaseRequested?.Invoke(this, EventArgs.Empty);
                 this.initialized = false;
+                this.LongMessenger.UnregisterAll(this);
+                this.longMessengerRegistered = false;
             }
             this.closePending = true;
             await this.SetStateAsync(ScreenState.Closed);

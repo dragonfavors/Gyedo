@@ -116,9 +116,27 @@ stateDiagram-v2
 
 ### ObservableRecipient와 메시지 구독
 
-상속 구조는 `ObservableObject → ObservableRecipient → ValidatingModelBase → Screen → Conductor`입니다. Toolkit의 실제 `ObservableRecipient`를 사용하며 `IRecipient<TMessage>` 구현을 활성화 시 자동 등록하고 비활성화 시 해제합니다. 구독 연결은 비동기 훅보다 먼저 수행합니다.
+상속 구조는 `ObservableObject → ObservableRecipient → ValidatingModelBase → Screen → Conductor`입니다. `IRecipient<TMessage>`를 구현하면 다음 세 메신저에 수신 기간에 맞춰 자동 등록됩니다.
 
-기본 전달자는 `WeakReferenceMessenger.Default`입니다. 전달자를 분리하려면 Screen을 직접 상속한 VM 생성자에서 `base(validator, messenger)`를 호출합니다. `Screen.IsActive`는 읽기 전용으로 제공하므로 상태 변경에는 `ActivateAsync`·`DeactivateAsync`를 사용하세요. Toolkit의 동기 `OnActivated`·`OnDeactivated`는 구독 연결용으로 고정하고, 앱은 비동기 훅을 재정의합니다.
+| 메신저 | 수신 기간 |
+|---|---|
+| `Messenger` | 활성화부터 비활성화까지 |
+| `LongMessenger` | 최초 활성화 시작부터 닫힐 때까지. 비활성 탭에서도 수신 |
+| `AlwaysMessenger` | 생성된 인스턴스가 살아 있는 동안. 닫힌 뒤에도 수신 |
+
+세 메신저는 서로 독립적입니다. 같은 `Receive(TMessage)`를 사용하지만 **발행할 메신저로 수신 기간을 선택**합니다.
+
+```csharp
+this.Messenger.Send(new RefreshRequested());       // 활성 VM에 전달
+this.LongMessenger.Send(new RefreshRequested());   // 한 번 열린 뒤 아직 닫히지 않은 VM에 전달
+this.AlwaysMessenger.Send(new RefreshRequested()); // 생성되어 살아 있는 VM에 전달
+```
+
+위 코드는 VM 안의 예이며, 앱의 메시지 타입 `RefreshRequested`와 `CommunityToolkit.Mvvm.Messaging`을 사용합니다. `LongMessenger`는 `OnInitialActivatedAsync` 전에 등록하고 `OnClosedAsync` 전에 해제합니다. 초기화 실패·취소 시에도 닫힐 때까지 유지하며, 재시도나 재활성화로 중복 등록하지 않습니다.
+
+`LongMessenger`와 `AlwaysMessenger`는 모든 Screen이 공유하는 별도의 약한 참조 메신저입니다. 메신저 때문에 VM이 가비지 수집되지 못하는 일은 없지만, 닫힌 VM의 참조를 앱이 계속 보관하면 `AlwaysMessenger` 수신도 계속됩니다.
+
+활성 상태용 `Messenger`의 기본 전달자는 `WeakReferenceMessenger.Default`입니다. 이 전달자를 분리하려면 Screen을 직접 상속한 VM 생성자에서 `base(validator, messenger)`를 호출합니다. 이 인자는 `LongMessenger`·`AlwaysMessenger`에는 영향을 주지 않습니다. `Screen.IsActive`는 읽기 전용으로 제공하므로 상태 변경에는 `ActivateAsync`·`DeactivateAsync`를 사용하세요. Toolkit의 동기 `OnActivated`·`OnDeactivated`는 구독 연결용으로 고정하고, 앱은 비동기 훅을 재정의합니다.
 
 ### ViewModel에서 구현할 부분
 
