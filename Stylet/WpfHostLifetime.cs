@@ -16,7 +16,8 @@ internal sealed class WpfHostLifetime : IHostLifetime, IDisposable
     private static readonly ConditionalWeakTable<Application, WpfHostLifetime> lifetimes = new();
     private readonly Application application;
     private readonly Func<Task> shutdown;
-    private readonly ShutdownMode shutdownMode;
+    private ShutdownMode shutdownMode;
+    private bool attached;
     private readonly HashSet<Window> windows = new();
     private Window closingMainWindow;
     private int disposed;
@@ -27,16 +28,25 @@ internal sealed class WpfHostLifetime : IHostLifetime, IDisposable
             new RoutedEventHandler(OnWindowLoaded));
     }
 
-    public WpfHostLifetime(Application application, Func<Task> shutdown)
+    public WpfHostLifetime(Application application, Func<Task> shutdown, bool attach = true)
     {
         this.application = application;
         this.shutdown = shutdown;
-        if (application == null)
+        if (attach)
+            this.Attach();
+    }
+
+    public void Attach()
+    {
+        if (this.application == null || this.attached)
             return;
-        this.shutdownMode = application.ShutdownMode;
-        lifetimes.Add(application, this);
-        application.ShutdownMode = ShutdownMode.OnExplicitShutdown;
-        foreach (Window window in application.Windows)
+        this.application.Dispatcher.VerifyAccess();
+        ObjectDisposedException.ThrowIf(this.disposed != 0, this);
+        this.shutdownMode = this.application.ShutdownMode;
+        lifetimes.Add(this.application, this);
+        this.attached = true;
+        this.application.ShutdownMode = ShutdownMode.OnExplicitShutdown;
+        foreach (Window window in this.application.Windows)
             this.Track(window);
     }
 
@@ -92,7 +102,7 @@ internal sealed class WpfHostLifetime : IHostLifetime, IDisposable
 
     public void Dispose()
     {
-        if (Interlocked.Exchange(ref this.disposed, 1) != 0 || this.application == null)
+        if (Interlocked.Exchange(ref this.disposed, 1) != 0 || !this.attached)
             return;
         lifetimes.Remove(this.application);
         if (this.application.Dispatcher.CheckAccess())

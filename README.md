@@ -133,6 +133,54 @@ public class Bootstrapper : Stylet.Bootstrapper<ShellViewModel>
 
 `dotnet run`으로 실행하면 호스트 시작, 루트 VM 생성, 화면 표시, 종료 시 정리가 연결됩니다.
 
+## Main부터 직접 구성하기
+
+업데이트 확인, 단일 인스턴스 검사, 네이티브 라이브러리 설정 등을 앱이 직접 제어하려면 [CustomStartup 샘플](Samples/Stylet.Samples.CustomStartup/App.xaml.cs)을 참고하세요. 일반 `Application` 클래스에서 호스트를 만들며, 별도 Bootstrapper 클래스나 앱 전용 인터페이스는 필요하지 않습니다.
+
+프로젝트에서 직접 작성한 `Main`을 진입점으로 지정하고 `App.xaml`을 `Page`로 변경합니다. 네임스페이스는 앱에 맞게 바꿉니다.
+
+```xml
+<PropertyGroup>
+    <StartupObject>MyApp.App</StartupObject>
+</PropertyGroup>
+<ItemGroup>
+    <ApplicationDefinition Remove="App.xaml" />
+    <Page Include="App.xaml" />
+</ItemGroup>
+```
+
+`App`의 `[STAThread] Main`에서 사전 작업을 마친 뒤 앱과 호스트를 구성합니다.
+
+```csharp
+var app = new App();
+app.InitializeComponent();
+app.Host = Microsoft.Extensions.Hosting.Host.CreateDefaultBuilder(args)
+    .UseContentRoot(AppContext.BaseDirectory)
+    .ConfigureStylet(app, views => views.ViewModelNameSuffix = "VM")
+    .ConfigureServices((_, services) => services.AddSingleton<MainVM>())
+    .Build();
+return app.Run();
+```
+
+`App`에는 `IHost Host { get; private set; }` 속성을 두고, `OnStartup`에서 시작을 기다린 뒤 첫 화면을 직접 선택합니다.
+
+```csharp
+if (!await this.StartStyletAsync(this.Host))
+    return;
+
+// 폰트·테마 등 첫 화면 표시 전의 UI 초기화
+this.Host.Services.GetRequiredService<IWindowManager>()
+    .ShowWindow(this.Host.Services.GetRequiredService<MainVM>());
+```
+
+- 위 이름 설정은 `MainVM → MainView`를 뜻합니다. 기본값은 `ViewModel → View`이며, `ViewNameSuffix`와 `ViewAssemblies`도 설정할 수 있습니다.
+- `Host.CreateApplicationBuilder(args)`에도 같은 `ConfigureStylet(app, ...)`를 사용할 수 있습니다.
+- 이 경로의 `App.xaml`에는 `ApplicationLoader`와 `StartupUri`를 두지 않습니다. 리소스와 Dispatcher는 `StartStyletAsync`에서 연결합니다.
+- 시작 중 호스트 종료 요청이 오면 `false`가 반환되므로 첫 화면을 표시하지 않습니다. 시작 예외 처리는 샘플의 `OnStartup`을 참고하세요.
+- 연결 이후 호스트의 시작·정상 종료·폐기는 Stylet이 담당합니다. 직접 `Host.StartAsync`나 `Dispose`를 중복 호출하지 않습니다. 앱에서 종료할 때는 `ShutdownStyletAsync()` 또는 `IHostApplicationLifetime.StopApplication()`을 사용합니다.
+
+서비스 등록은 기존 Microsoft DI의 명시적 등록 방식을 사용합니다. 사전 작업과 앱별 초기화 순서는 `Main`과 `OnStartup`에서 자유롭게 구성합니다.
+
 ## 기존 코드 사용 시 차이
 
 모든 프로젝트는 .NET 10을 대상으로 합니다. 공통 코어와 공통 테스트는 .NET 10 SDK만으로 빌드·실행할 수 있으며, WPF 프로젝트·샘플·템플릿은 Windows가 필요합니다. 이전 대상 프레임워크는 지원하지 않습니다.

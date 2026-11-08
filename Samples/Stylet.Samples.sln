@@ -25,6 +25,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Stylet.Samples.NavigationCo
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Stylet.Core", "..\Stylet.Core\Stylet.Core.csproj", "{7B25AB85-A0F0-4711-842F-52C5510FA7A3}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Stylet.Samples.CustomStartup", "Stylet.Samples.CustomStartup\Stylet.Samples.CustomStartup.csproj", "{327503D6-8726-45CA-A030-E974CEC17621}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -75,6 +77,10 @@ Global
 		{7B25AB85-A0F0-4711-842F-52C5510FA7A3}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{7B25AB85-A0F0-4711-842F-52C5510FA7A3}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{7B25AB85-A0F0-4711-842F-52C5510FA7A3}.Release|Any CPU.Build.0 = Release|Any CPU
+		{327503D6-8726-45CA-A030-E974CEC17621}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{327503D6-8726-45CA-A030-E974CEC17621}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{327503D6-8726-45CA-A030-E974CEC17621}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{327503D6-8726-45CA-A030-E974CEC17621}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

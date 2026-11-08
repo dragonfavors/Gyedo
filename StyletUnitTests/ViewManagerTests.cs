@@ -619,6 +619,20 @@ public class ViewManagerTests
     }
 
     [Test]
+    public void ViewManagerConfigSupportsShortViewModelNames()
+    {
+        var manager = new AccessibleViewManager(new ViewManagerConfig
+        {
+            ViewFactory = _ => new FrameworkElement(),
+            ViewAssemblies = new List<Assembly>(),
+            ViewModelNameSuffix = "VM",
+            ViewNameSuffix = "View",
+        });
+
+        Assert.AreEqual("Example.MainView", manager.ViewTypeNameForModelTypeName("Example.MainVM"));
+    }
+
+    [Test]
     public void NamespaceTransformationsTransformsNamespace()
     {
         this.viewManager.NamespaceTransformations["Foo.Bar"] = "Baz.Yay";

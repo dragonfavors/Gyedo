@@ -57,6 +57,12 @@ public interface IViewManager
 /// </summary>
 public class ViewManagerConfig
 {
+    /// <summary>ViewModel 이름에서 교체할 접미사입니다.</summary>
+    public string ViewModelNameSuffix { get; set; } = "ViewModel";
+
+    /// <summary>View 이름에 사용할 접미사입니다.</summary>
+    public string ViewNameSuffix { get; set; } = "View";
+
     /// <summary>
     /// Gets or sets the ViewFactory to use
     /// </summary>
@@ -147,6 +153,8 @@ public class ViewManager : IViewManager
 
         this.ViewFactory = config.ViewFactory;
         this.ViewAssemblies = config.ViewAssemblies;
+        this.ViewModelNameSuffix = config.ViewModelNameSuffix;
+        this.ViewNameSuffix = config.ViewNameSuffix;
     }
 
     /// <summary>

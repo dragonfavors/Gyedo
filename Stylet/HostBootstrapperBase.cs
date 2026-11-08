@@ -1,5 +1,4 @@
 using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Hosting;
 using Stylet.Xaml;
 using System;
@@ -47,18 +46,28 @@ public abstract class HostBootstrapperBase : BootstrapperBase, IAsyncDisposable
     /// <summary>WPF 화면 관리에 필요한 기본 서비스를 등록합니다.</summary>
     protected virtual void DefaultConfigureServices(IServiceCollection services)
     {
-        services.TryAddSingleton(new ViewManagerConfig
+        StyletHostingExtensions.AddDefaultServices(services, this, _ => new ViewManagerConfig
         {
             ViewFactory = this.GetInstance,
             ViewAssemblies = new List<Assembly> { this.GetType().Assembly },
         });
-        services.TryAddSingleton<ViewManager>();
-        services.TryAddSingleton<IViewManager>(sp => sp.GetRequiredService<ViewManager>());
-        services.TryAddSingleton<IWindowManagerConfig>(this);
-        services.TryAddSingleton<IWindowManager, WindowManager>();
-        services.TryAddSingleton<IEventAggregator, EventAggregator>();
-        services.TryAddTransient<IMessageBoxViewModel, MessageBoxViewModel>();
-        services.TryAddSingleton<Func<IMessageBoxViewModel>>(sp => () => sp.GetRequiredService<IMessageBoxViewModel>());
+    }
+
+    /// <summary>기본 호스트를 구성하거나 외부에서 구성한 호스트를 제공합니다.</summary>
+    private protected virtual IHost BuildHost(string[] args)
+    {
+        HostApplicationBuilder builder = this.CreateHostBuilder(args);
+        builder.ConfigureContainer(new DefaultServiceProviderFactory(new ServiceProviderOptions
+        {
+            ValidateOnBuild = true,
+            ValidateScopes = true,
+        }));
+        this.lifetime = new WpfHostLifetime(this.Application, () => this.ShutdownAsync());
+        builder.Services.AddSingleton<IHostLifetime>(this.lifetime);
+        this.ConfigureHost(builder);
+        this.ConfigureServices(builder.Services);
+        this.DefaultConfigureServices(builder.Services);
+        return builder.Build();
     }
 
     /// <summary>WPF Startup 이벤트용 진입점입니다. 직접 호출할 때는 StartAsync를 사용하세요.</summary>
@@ -89,18 +98,7 @@ public abstract class HostBootstrapperBase : BootstrapperBase, IAsyncDisposable
         this.OnStart();
         try
         {
-            HostApplicationBuilder builder = this.CreateHostBuilder(this.Args);
-            builder.ConfigureContainer(new DefaultServiceProviderFactory(new ServiceProviderOptions
-            {
-                ValidateOnBuild = true,
-                ValidateScopes = true,
-            }));
-            this.lifetime = new WpfHostLifetime(this.Application, () => this.ShutdownAsync());
-            builder.Services.AddSingleton<IHostLifetime>(this.lifetime);
-            this.ConfigureHost(builder);
-            this.ConfigureServices(builder.Services);
-            this.DefaultConfigureServices(builder.Services);
-            this.Host = builder.Build();
+            this.Host = this.BuildHost(this.Args);
 
             IHostApplicationLifetime applicationLifetime = this.Services.GetRequiredService<IHostApplicationLifetime>();
             this.stoppingRegistration = applicationLifetime.ApplicationStopping.Register(this.OnHostStopping);

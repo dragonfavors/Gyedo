@@ -4,6 +4,8 @@ Stylet Changelog
 Unreleased
 ----------
 
+ - 앱이 직접 구성한 호스트를 연결하는 ConfigureStylet/StartStyletAsync/ShutdownStyletAsync와 커스텀 Main 샘플을 추가합니다.
+ - ViewManagerConfig에서 View와 ViewModel의 이름 접미사를 설정할 수 있습니다.
  - StyletIoC 구현·전용 부트스트래퍼·테스트를 제거하고 Generic Host와 Microsoft DI를 사용합니다(호환성 변경).
  - 별도 컨테이너 예제 프로젝트와 관련 패키지·테스트를 제거하고 기본 Microsoft DI만 제공합니다.
  - 기본 Bootstrapper를 Generic Host와 Microsoft DI로 전환하고 Hosted Service의 시작·종료를 WPF 생명주기에 연결합니다.
