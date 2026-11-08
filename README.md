@@ -346,6 +346,24 @@ await this.Host.Services.GetRequiredService<IWindowManager>()
 
 서비스 등록은 기존 Microsoft DI의 명시적 등록 방식을 사용합니다. 사전 작업과 앱별 초기화 순서는 `Main`과 `OnStartup`에서 자유롭게 구성합니다.
 
+## 자동 UI 통합 테스트
+
+Windows에서 다음 명령으로 실제 WPF UI 흐름을 검증합니다.
+
+```powershell
+dotnet test StyletUnitTests/StyletUnitTests.csproj --filter "TestCategory=WpfIntegration"
+```
+
+[WpfUiFlowTests](StyletUnitTests/WpfUiFlowTests.cs)는 실제 ViewManager·WindowManager·기본 탭 스타일·Dispatcher를 사용합니다. 창은 화면 밖에 표시하고, 버튼은 UI Automation으로 호출하며 탭 선택은 WPF 컨트롤에서 변경합니다.
+
+- 창 표시·DataContext·제목·텍스트·명령 바인딩
+- 모달 대화상자 확인·취소와 기본 메시지 박스 버튼 결과
+- 탭 전환·실패 복구·View 재사용·자식 종료와 폐기
+- 로딩 중 취소·정리 대기, 종료 거절 후 재시도
+- 세 메신저의 수신 기간과 우선순위별 UI 갱신 순서
+
+UI 이벤트·Task 완료를 기다리며, 종료 시 창과 전역 Dispatcher 설정을 정리합니다. 개별 Dispatcher·코어 테스트와 함께 전체 검증하려면 `dotnet test Stylet.sln`을 실행합니다.
+
 ## 기존 코드 사용 시 차이
 
 모든 프로젝트는 .NET 10을 대상으로 합니다. 공통 코어와 공통 테스트는 .NET 10 SDK만으로 빌드·실행할 수 있으며, WPF 프로젝트·샘플·템플릿은 Windows가 필요합니다. 이전 대상 프레임워크는 지원하지 않습니다.
