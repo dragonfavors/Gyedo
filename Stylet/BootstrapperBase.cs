@@ -10,7 +10,7 @@ using System.Windows.Threading;
 namespace Stylet;
 
 /// <summary>
-/// Bootstrapper to be extended by applications which don't want to use StyletIoC as the IoC container.
+/// WPF 애플리케이션 초기화와 창 관리 설정의 공통 기반입니다.
 /// </summary>
 public abstract class BootstrapperBase : IBootstrapper, IWindowManagerConfig, IDisposable
 {

@@ -33,12 +33,12 @@ Stylet은 Antony Male이 만든 WPF용 ViewModel 중심 MVVM 프레임워크입�
 
 | 프로젝트 | 대상 | 역할 |
 |---|---|---|
-| [Stylet.Core](Stylet.Core/Stylet.Core.csproj) | `net10.0` | Toolkit 기반 속성 알림, 화면 수명주기·탐색, 검증, 컬렉션, 메시징, IoC, 로깅, 디스패처 계약 |
+| [Stylet.Core](Stylet.Core/Stylet.Core.csproj) | `net10.0` | Toolkit 기반 속성 알림, 화면 수명주기·탐색, 검증, 컬렉션, 메시징, 로깅, 디스패처 계약 |
 | [Stylet — WPF 구현](Stylet/Stylet.csproj) | `net10.0-windows` | Generic Host·Microsoft DI 초기화, View 연결, 창·메시지 박스, WPF Dispatcher·디자인 모드 |
 | [공통 테스트](Stylet.Core.Tests/Stylet.Core.Tests.csproj) | `net10.0` | WPF 없이 공통 동작 검증 |
 | [WPF 테스트](StyletUnitTests/StyletUnitTests.csproj) | `net10.0-windows` | WPF 연결과 창 동작 검증 |
 
-WPF 프로젝트가 코어를 참조합니다. 코어는 WPF나 Avalonia를 참조하지 않으며, 공통 타입의 네임스페이스는 기존 `Stylet`과 `StyletIoC`를 유지합니다. WPF 패키지·어셈블리 이름도 기존 `Stylet`을 유지합니다.
+WPF 프로젝트가 코어를 참조합니다. 코어에는 UI 프레임워크나 DI 컨테이너 구현이 없으며, 공통 타입의 네임스페이스는 `Stylet`을 사용합니다. WPF 패키지·어셈블리 이름도 기존 `Stylet`을 유지합니다.
 
 `Screen`은 실제 View를 보관하지 않습니다. WPF `ViewManager`가 화면의 View를 연결·재사용하고, `ViewReleaseRequested` 알림으로 종료 콜백 전에 연결을 해제합니다. 일반 ViewModel은 기존처럼 여러 View에 표시할 수 있습니다. View 로딩은 UI 타입이 없는 `IViewLifecycleAware.ViewLoaded()`를 통해 기존 `OnViewLoaded()` 훅에 전달하며, 화면 활성화와 별개입니다.
 
@@ -57,7 +57,7 @@ WPF 프로젝트가 코어를 참조합니다. 코어는 WPF나 Avalonia를 참�
 | 창·대화상자 관리 | `WindowManager` 사용 | 유지 |
 | 속성 알림 | 자체 `PropertyChangedBase`, `SetAndNotify` 사용 | Toolkit의 `ObservableObject`, `SetProperty`, `[ObservableProperty]` 사용 |
 | 검증·메시징 | Stylet 자체 구현 사용 | 유지 |
-| 기본 DI | StyletIoC | Generic Host의 Microsoft DI |
+| DI | 자체 StyletIoC 제공 | StyletIoC 제거, Generic Host의 Microsoft DI 사용 |
 | 앱 시작·종료 | Bootstrapper 중심의 동기 처리 | Hosted Service 시작·종료와 호스트 폐기를 비동기로 대기 |
 | 이전 버전 호환 API | 폐기 예정 별칭과 동기 종료 확인 API 포함 | 제거하고 현행 API로 통일 |
 | 구형 설치·배포 파일 | .NET Framework용 `Stylet.Start` 설치 스크립트 등 포함 | 제거하고 .NET 10 라이브러리·템플릿 패키지 유지 |
@@ -179,7 +179,17 @@ public class Bootstrapper : Stylet.Bootstrapper<ShellViewModel>
 
 호스트가 생성한 루트 VM과 등록 서비스는 호스트가 한 번만 폐기합니다. `AddSingleton(instance)`로 전달한 외부 인스턴스나 컨테이너 밖에서 `new`·`ActivatorUtilities`로 만든 객체는 호출자가 소유합니다. DI 등록 팩터리가 반환한 객체는 컨테이너가 소유합니다. DI가 소유한 자식 VM을 Conductor에 넣을 때는 `DisposeChildren = false`로 중복 폐기를 피하고 해당 Scope를 종료 시 해제해야 합니다. 창·탭별 Scope 자동 생성은 아직 제공하지 않으며, 필요한 범위에서 `CreateScope` 또는 `CreateAsyncScope`를 사용합니다.
 
-기존 `StyletIoCBootstrapperBase`와 외부 컨테이너 예제는 선택용으로 유지합니다. 샘플·템플릿의 기본 경로는 Generic Host이며, 템플릿은 이 포크에서 빌드한 `Stylet` 패키지를 사용해야 합니다. 원본 `Stylet 1.*` 패키지에는 새 호스트 API가 없습니다.
+DI는 Generic Host의 기본 Microsoft DI만 제공합니다. 기존 `StyletIoC` 구현·전용 부트스트래퍼와 별도 컨테이너 예제 프로젝트를 제거했습니다. 다른 컨테이너 지원은 필요할 때 추가합니다.
+
+샘플·템플릿도 Generic Host를 사용하며, 템플릿은 이 포크에서 빌드한 `Stylet` 패키지를 참조해야 합니다. 원본 `Stylet 1.*` 패키지에는 새 호스트 API가 없습니다.
+
+| 제거한 StyletIoC 기능 | 이전 방법 |
+|---|---|
+| `StyletIoCBootstrapperBase` | `Bootstrapper<T>` 또는 `HostBootstrapperBase` 사용 |
+| `IStyletIoCBuilder`, `StyletIoCModule` | `ConfigureServices(IServiceCollection)`에서 명시적으로 등록 |
+| `StyletIoC.IContainer`, `Container.Get<T>()` | `IServiceProvider`, `Services.GetRequiredService<T>()` 사용 |
+| `[Inject]`, `BuildUp`, `IInjectionAware` | 생성자 주입과 명시적인 초기화로 변경 |
+| 자동 등록·`ToAbstractFactory()` | 서비스 등록과 팩터리를 직접 작성 |
 
 Action 제거는 기존 사용 코드와 호환되지 않는 변경입니다. 다음처럼 명령 속성에 바인딩해야 합니다.
 
@@ -245,7 +255,7 @@ public partial class UserViewModel : Screen
 
 `Conductor`에 별도 종료 조건을 추가할 때는 `CanCloseAsync()`에서 `base.CanCloseAsync()`의 결과도 확인해 자식 화면의 종료 조건을 보존합니다. `ScreenExtensions.TryClose`는 화면 수명주기에 사용하는 별도 API로 유지합니다.
 
-사용하지 않는 .NET Framework 설치·실행 설정과 이전 형식의 단일 파일 추출 작업도 제거했습니다. IoC 구현은 그대로 유지하며, NuGet 패키지의 안내 문서는 이 README로 통일합니다.
+사용하지 않는 .NET Framework 설치·실행 설정과 이전 형식의 단일 파일 추출 작업도 제거했습니다. NuGet 패키지의 안내 문서는 이 README로 통일합니다.
 
 원본 문서의 화면 관리 설명은 참고할 수 있지만, Action과 `View.ActionTarget` 예제는 이 저장소에 적용되지 않습니다. 원본 NuGet 패키지에도 이 포크의 변경 사항이 포함된 것으로 간주해서는 안 됩니다.
 

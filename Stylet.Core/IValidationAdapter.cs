@@ -5,13 +5,10 @@ using System.Threading.Tasks;
 namespace Stylet;
 
 /// <summary>
-/// Generic version of IValidationArapter. Provided for use with StyletIoC
+/// 모델 타입별 검증 어댑터를 생성자로 주입하기 위한 인터페이스입니다.
 /// </summary>
 /// <remarks>
-/// Having a generic version allows you implement it using a generic ModelValidator (ModelValidator{T} : IModelValidator{T})
-/// then write a binding rule like this:
-/// builder.Bind(typeof(IModelValidator{})).ToAllImplementations()
-/// and request a new IModelValidator{MyViewModelType} in your ViewModel's constructor.
+/// IModelValidator{T} 구현을 DI에 등록하고 ViewModel의 생성자에서 필요한 모델 타입을 요청합니다.
 /// </remarks>
 /// <typeparam name="T">Type of model being validated</typeparam>
 public interface IModelValidator<in T> : IModelValidator
