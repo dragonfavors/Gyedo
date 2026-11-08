@@ -1,13 +1,16 @@
-﻿using System;
+﻿using Microsoft.Extensions.DependencyInjection;
 
 namespace Stylet.Samples.HelloDialog;
 
 public class Bootstrapper : Bootstrapper<ShellViewModel>
 {
-    protected override void ConfigureIoC(StyletIoC.IStyletIoCBuilder builder)
+    protected override void ConfigureServices(IServiceCollection services)
     {
-        base.ConfigureIoC(builder);
+        services.AddSingleton<IDialogFactory, DialogFactory>();
+    }
 
-        builder.Bind<IDialogFactory>().ToAbstractFactory();
+    private sealed class DialogFactory : IDialogFactory
+    {
+        public Dialog1ViewModel CreateDialog1() => new();
     }
 }

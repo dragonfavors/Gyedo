@@ -6,12 +6,10 @@ using System.Reflection;
 namespace Stylet;
 
 /// <summary>
-/// Bootstrapper to be extended by any application which wants to use StyletIoC, but doesn't have a root ViewModel
+/// 기존 StyletIoC 구성을 유지할 때 선택하는 부트스트래퍼입니다.
 /// </summary>
 /// <remarks>
-/// You would normally use <see cref="Bootstrapper{TRootViewModel}"/>, which lets you specify the root ViewModel
-/// to display. If you don't want to show a window on startup, override <see cref="BootstrapperBase.Launch"/>
-/// but don't call <see cref="BootstrapperBase.DisplayRootView(object)"/>. 
+/// 기본 Bootstrapper는 Generic Host를 사용합니다. 이 어댑터는 Launch에서 루트 화면을 직접 표시합니다.
 /// </remarks>
 public abstract class StyletIoCBootstrapperBase : BootstrapperBase
 {

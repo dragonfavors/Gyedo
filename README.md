@@ -34,7 +34,7 @@ Stylet은 Antony Male이 만든 WPF용 ViewModel 중심 MVVM 프레임워크입�
 | 프로젝트 | 대상 | 역할 |
 |---|---|---|
 | [Stylet.Core](Stylet.Core/Stylet.Core.csproj) | `net10.0` | Toolkit 기반 속성 알림, 화면 수명주기·탐색, 검증, 컬렉션, 메시징, IoC, 로깅, 디스패처 계약 |
-| [Stylet — WPF 구현](Stylet/Stylet.csproj) | `net10.0-windows` | View 연결, `View.Model`, 창·메시지 박스, 앱 초기화, WPF Dispatcher·디자인 모드 |
+| [Stylet — WPF 구현](Stylet/Stylet.csproj) | `net10.0-windows` | Generic Host·Microsoft DI 초기화, View 연결, 창·메시지 박스, WPF Dispatcher·디자인 모드 |
 | [공통 테스트](Stylet.Core.Tests/Stylet.Core.Tests.csproj) | `net10.0` | WPF 없이 공통 동작 검증 |
 | [WPF 테스트](StyletUnitTests/StyletUnitTests.csproj) | `net10.0-windows` | WPF 연결과 창 동작 검증 |
 
@@ -56,7 +56,9 @@ WPF 프로젝트가 코어를 참조합니다. 코어는 WPF나 Avalonia를 참�
 | View 탐색·생성·연결 | `ViewManager`, `View.Model` 사용 | 유지 |
 | 창·대화상자 관리 | `WindowManager` 사용 | 유지 |
 | 속성 알림 | 자체 `PropertyChangedBase`, `SetAndNotify` 사용 | Toolkit의 `ObservableObject`, `SetProperty`, `[ObservableProperty]` 사용 |
-| 검증·메시징·IoC | Stylet 자체 구현 사용 | 유지 |
+| 검증·메시징 | Stylet 자체 구현 사용 | 유지 |
+| 기본 DI | StyletIoC | Generic Host의 Microsoft DI |
+| 앱 시작·종료 | Bootstrapper 중심의 동기 처리 | Hosted Service 시작·종료와 호스트 폐기를 비동기로 대기 |
 | 이전 버전 호환 API | 폐기 예정 별칭과 동기 종료 확인 API 포함 | 제거하고 현행 API로 통일 |
 | 구형 설치·배포 파일 | .NET Framework용 `Stylet.Start` 설치 스크립트 등 포함 | 제거하고 .NET 10 라이브러리·템플릿 패키지 유지 |
 | 명령 연결 | `{s:Action Save}`로 메서드 호출 가능 | Toolkit 명령 또는 `ICommand` 속성에 일반 바인딩 사용 |
@@ -66,6 +68,70 @@ WPF 프로젝트가 코어를 참조합니다. 코어는 WPF나 Avalonia를 참�
 | 기본 메시지 박스 | Action으로 버튼 클릭 처리 | View의 버튼 이벤트로 처리 |
 | 샘플 | Action 사용 예제 포함 | Hello는 Toolkit 생성 속성·명령 사용, 나머지는 일반 명령 바인딩과 이벤트 처리 사용 |
 | README | 영어 | 한국어로 원본과 변경 사항 안내 |
+
+## 템플릿 없이 WPF 앱 설정
+
+일반 WPF .NET 10 프로젝트를 만든 뒤 아래 순서로 연결합니다. 프로젝트 이름은 `MyApp`으로 가정합니다.
+
+### 1. 프로젝트 참조
+
+앱 프로젝트 폴더에서 실행합니다. `<저장소 경로>`는 실제 복제한 위치로 바꿉니다.
+
+```powershell
+dotnet add reference "<저장소 경로>\Stylet\Stylet.csproj"
+```
+
+### 2. 첫 화면 준비
+
+기본 `MainWindow.xaml`과 `MainWindow.xaml.cs`를 `ShellView.xaml`과 `ShellView.xaml.cs`로 바꿉니다. XAML의 `x:Class`는 `MyApp.ShellView`, 코드의 클래스명과 생성자명은 `ShellView`로 변경합니다.
+
+`ShellViewModel.cs`를 추가합니다.
+
+```csharp
+namespace MyApp;
+
+public class ShellViewModel : Stylet.Screen
+{
+}
+```
+
+이름 규칙에 따라 `ShellViewModel`에 `ShellView`가 연결됩니다.
+
+### 3. Bootstrapper 추가
+
+`Bootstrapper.cs`를 추가합니다.
+
+```csharp
+namespace MyApp;
+
+public class Bootstrapper : Stylet.Bootstrapper<ShellViewModel>
+{
+}
+```
+
+서비스가 필요하면 이 클래스의 `ConfigureServices`에서 등록합니다.
+
+### 4. App.xaml 연결
+
+기존 `StartupUri`를 제거하고 다음처럼 설정합니다. `App.xaml.cs`는 기본 `Application` 상속을 유지합니다.
+
+```xml
+<Application x:Class="MyApp.App"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:s="https://github.com/canton7/Stylet"
+             xmlns:local="clr-namespace:MyApp">
+    <Application.Resources>
+        <s:ApplicationLoader>
+            <s:ApplicationLoader.Bootstrapper>
+                <local:Bootstrapper />
+            </s:ApplicationLoader.Bootstrapper>
+        </s:ApplicationLoader>
+    </Application.Resources>
+</Application>
+```
+
+`dotnet run`으로 실행하면 호스트 시작, 루트 VM 생성, 화면 표시, 종료 시 정리가 연결됩니다.
 
 ## 기존 코드 사용 시 차이
 
@@ -80,6 +146,40 @@ WPF 프로젝트가 코어를 참조합니다. 코어는 WPF나 Avalonia를 참�
 | `Execute.InDesignMode` | WPF `DesignMode.IsEnabled` |
 | `IWindowManager`의 `IViewAware ownerViewModel` 매개변수 | 연결된 Screen 또는 WPF `IViewAware`를 객체로 받고 ViewManager에서 소유 View 조회 |
 | XAML에서 공통 타입을 직접 참조하는 `assembly=Stylet` | 해당 공통 타입은 `assembly=Stylet.Core`로 변경 |
+| 기본 Bootstrapper의 `ConfigureIoC`, `Container.Get<T>()` | `ConfigureServices`, `Services.GetRequiredService<T>()` |
+
+### Generic Host와 DI
+
+기본 `Bootstrapper<T>`는 `HostBootstrapperBase`를 통해 Generic Host를 사용합니다. `IConfiguration`, `ILogger<T>`, `IOptions<T>`, `IHostedService`를 생성자로 주입할 수 있습니다. Host 패키지는 WPF 구현에만 추가하며, 공통 코어는 호스트에 의존하지 않습니다.
+
+```csharp
+public class Bootstrapper : Stylet.Bootstrapper<ShellViewModel>
+{
+    protected override void ConfigureHost(HostApplicationBuilder builder)
+    {
+        builder.Services.AddHostedService<BackgroundWorker>();
+    }
+
+    protected override void ConfigureServices(IServiceCollection services)
+    {
+        services.AddSingleton<IDataService, DataService>();
+    }
+}
+```
+
+위 예시는 `Microsoft.Extensions.Hosting`과 `Microsoft.Extensions.DependencyInjection` 네임스페이스를 사용합니다. 설정 파일의 기본 경로는 실행 파일 디렉터리입니다. `appsettings.json`을 사용할 때는 출력 디렉터리로 복사하도록 설정합니다.
+
+- 기존 `App.xaml`의 `ApplicationLoader`를 그대로 사용합니다.
+- Hosted Service의 `StartAsync`가 끝난 뒤 루트 화면을 표시합니다.
+- 마지막 창 또는 주 창을 닫으면 원래 `ShutdownMode`에 따라 Host의 `StopAsync`와 비동기 폐기가 끝난 뒤 앱을 종료합니다. 내부적으로는 대기 중 조기 종료를 막기 위해 `OnExplicitShutdown`을 사용합니다.
+- `OnExplicitShutdown`을 선택한 앱은 `ShutdownAsync()` 또는 주입받은 `IHostApplicationLifetime.StopApplication()`으로 종료합니다. 직접 `Application.Shutdown()`을 호출하면 정상적인 비동기 종료 대기를 우회합니다.
+- WPF 없이 직접 초기화할 때는 `StartAsync()`와 `StopAsync()` 또는 `DisposeAsync()`를 사용합니다. 동기 `Dispose()`는 강제 종료 시 자원 해제용입니다.
+
+서비스는 명시적으로 등록합니다. 미등록 구체 타입을 `GetInstance`로 요청하면 `ActivatorUtilities`로 생성하지만, 생성자에 필요한 서비스는 등록되어 있어야 합니다. 자동 어셈블리 등록과 동적 추상 팩터리는 기본 경로에서 사용하지 않습니다. 기본 서비스는 `ConfigureServices`에서 같은 서비스 타입을 등록해 교체할 수 있습니다.
+
+호스트가 생성한 루트 VM과 등록 서비스는 호스트가 한 번만 폐기합니다. `AddSingleton(instance)`로 전달한 외부 인스턴스나 컨테이너 밖에서 `new`·`ActivatorUtilities`로 만든 객체는 호출자가 소유합니다. DI 등록 팩터리가 반환한 객체는 컨테이너가 소유합니다. DI가 소유한 자식 VM을 Conductor에 넣을 때는 `DisposeChildren = false`로 중복 폐기를 피하고 해당 Scope를 종료 시 해제해야 합니다. 창·탭별 Scope 자동 생성은 아직 제공하지 않으며, 필요한 범위에서 `CreateScope` 또는 `CreateAsyncScope`를 사용합니다.
+
+기존 `StyletIoCBootstrapperBase`와 외부 컨테이너 예제는 선택용으로 유지합니다. 샘플·템플릿의 기본 경로는 Generic Host이며, 템플릿은 이 포크에서 빌드한 `Stylet` 패키지를 사용해야 합니다. 원본 `Stylet 1.*` 패키지에는 새 호스트 API가 없습니다.
 
 Action 제거는 기존 사용 코드와 호환되지 않는 변경입니다. 다음처럼 명령 속성에 바인딩해야 합니다.
 

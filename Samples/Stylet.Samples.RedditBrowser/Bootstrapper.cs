@@ -1,17 +1,26 @@
-﻿using Stylet.Samples.RedditBrowser.Pages;
+﻿using Microsoft.Extensions.DependencyInjection;
+using Stylet.Samples.RedditBrowser.Pages;
 using Stylet.Samples.RedditBrowser.RedditApi;
-using System;
 
 namespace Stylet.Samples.RedditBrowser;
 
 public class Bootstrapper : Bootstrapper<ShellViewModel>
 {
-    protected override void ConfigureIoC(StyletIoC.IStyletIoCBuilder builder)
+    protected override void ConfigureServices(IServiceCollection services)
     {
-        base.ConfigureIoC(builder);
+        services.AddSingleton<IRedditClient, RedditClient>();
+        services.AddTransient<TaskbarViewModel>();
+        services.AddSingleton<ISubredditViewModelFactory, SubredditFactory>();
+        services.AddSingleton<IPostCommentsViewModelFactory, CommentsFactory>();
+    }
 
-        builder.Bind<IRedditClient>().To<RedditClient>().InSingletonScope();
-        builder.Bind<ISubredditViewModelFactory>().ToAbstractFactory();
-        builder.Bind<IPostCommentsViewModelFactory>().ToAbstractFactory();
+    private sealed class SubredditFactory(IRedditClient client, IPostCommentsViewModelFactory comments) : ISubredditViewModelFactory
+    {
+        public SubredditViewModel CreateSubredditViewModel() => new(new PostsViewModel(client), comments);
+    }
+
+    private sealed class CommentsFactory(IRedditClient client) : IPostCommentsViewModelFactory
+    {
+        public PostCommentsViewModel CreatePostCommentsViewModel() => new(client);
     }
 }

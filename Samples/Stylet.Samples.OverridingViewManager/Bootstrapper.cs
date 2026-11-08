@@ -1,12 +1,11 @@
-﻿using StyletIoC;
-using System;
+﻿using Microsoft.Extensions.DependencyInjection;
 
 namespace Stylet.Samples.OverridingViewManager;
 
 public class Bootstrapper : Bootstrapper<ShellViewModel>
 {
-    protected override void ConfigureIoC(IStyletIoCBuilder builder)
+    protected override void ConfigureServices(IServiceCollection services)
     {
-        builder.Bind<IViewManager>().To<CustomViewManager>();
+        services.AddSingleton<IViewManager, CustomViewManager>();
     }
 }

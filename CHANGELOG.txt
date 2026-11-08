@@ -4,6 +4,8 @@ Stylet Changelog
 Unreleased
 ----------
 
+ - 기본 Bootstrapper를 Generic Host와 Microsoft DI로 전환하고 Hosted Service의 시작·종료를 WPF 생명주기에 연결합니다.
+ - 샘플·템플릿을 명시적 서비스 등록으로 이전하고 루트 VM의 중복 폐기를 제거합니다.
  - 공통 코어에 CommunityToolkit.Mvvm 8.4.2를 통합하고 PropertyChangedBase를 제거합니다(호환성 변경).
  - 속성 알림을 SetProperty/OnPropertyChanged로 통일하고, 기존 검증·디스패처와 Toolkit 생성 속성을 연결합니다.
  - Hello 샘플에 ObservableProperty와 RelayCommand를 적용합니다.

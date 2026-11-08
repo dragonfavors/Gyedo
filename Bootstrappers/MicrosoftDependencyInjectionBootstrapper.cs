@@ -1,5 +1,4 @@
-﻿using Autofac;
-using Microsoft.Extensions.DependencyInjection;
+﻿using Microsoft.Extensions.DependencyInjection;
 using Stylet;
 using System;
 using System.Collections.Generic;
@@ -43,7 +42,7 @@ public class MicrosoftDependencyInjectionBootstrapper<TRootViewModel> : Bootstra
         services.AddSingleton<IEventAggregator, EventAggregator>();
         services.AddTransient<IMessageBoxViewModel, MessageBoxViewModel>(); // Not singleton!
         // Also need a factory
-        services.AddSingleton<Func<IMessageBoxViewModel>>(() => new MessageBoxViewModel());
+        services.AddSingleton<Func<IMessageBoxViewModel>>(sp => () => sp.GetRequiredService<IMessageBoxViewModel>());
     }
 
     /// <summary>
@@ -65,7 +64,6 @@ public class MicrosoftDependencyInjectionBootstrapper<TRootViewModel> : Bootstra
     {
         base.Dispose();
 
-        ScreenExtensions.TryDispose(this._rootViewModel);
         if (this.serviceProvider != null)
             this.serviceProvider.Dispose();
     }

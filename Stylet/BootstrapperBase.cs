@@ -22,7 +22,7 @@ public abstract class BootstrapperBase : IBootstrapper, IWindowManagerConfig, ID
     /// <summary>
     /// Gets the command line arguments that were passed to the application from either the command prompt or the desktop.
     /// </summary>
-    public string[] Args { get; private set; }
+    public string[] Args { get; protected set; }
 
     /// <summary>
     /// Initialises a new instance of the <see cref="BootstrapperBase"/> class

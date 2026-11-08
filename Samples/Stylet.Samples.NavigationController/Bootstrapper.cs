@@ -1,26 +1,24 @@
-﻿using System;
-using Stylet;
-using StyletIoC;
+﻿using Microsoft.Extensions.DependencyInjection;
 using Stylet.Samples.NavigationController.Pages;
+using System;
 
 namespace Stylet.Samples.NavigationController;
 
 public class Bootstrapper : Bootstrapper<ShellViewModel>
 {
-    protected override void ConfigureIoC(IStyletIoCBuilder builder)
+    protected override void ConfigureServices(IServiceCollection services)
     {
-        builder.Bind<NavigationController>().And<INavigationController>().To<NavigationController>().InSingletonScope();
-        // https://github.com/canton7/Stylet/issues/24
-        builder.Bind<Func<Page1ViewModel>>().ToFactory<Func<Page1ViewModel>>(c => () => c.Get<Page1ViewModel>());
-        builder.Bind<Func<Page2ViewModel>>().ToFactory<Func<Page2ViewModel>>(c => () => c.Get<Page2ViewModel>());
+        services.AddSingleton<NavigationController>();
+        services.AddSingleton<INavigationController>(sp => sp.GetRequiredService<NavigationController>());
+        services.AddTransient<HeaderViewModel>();
+        services.AddSingleton<Func<Page1ViewModel>>(sp => () => new Page1ViewModel(sp.GetRequiredService<INavigationController>()));
+        services.AddSingleton<Func<Page2ViewModel>>(sp => () => new Page2ViewModel(sp.GetRequiredService<INavigationController>()));
     }
 
     protected override void OnLaunch()
     {
-        // There's a circular dependency, where ShellViewModel -> HeaderViewModel -> NavigationController -> ShellViewModel
-        // We break this by assigning the ShellViewModel to the NavigationController after constructing it
-        NavigationController navigationController = this.Container.Get<NavigationController>();
-        navigationController.Delegate = this.RootViewModel;
-        navigationController.NavigateToPage1();
+        var navigation = this.Services.GetRequiredService<NavigationController>();
+        navigation.Delegate = this.RootViewModel;
+        navigation.NavigateToPage1();
     }
 }

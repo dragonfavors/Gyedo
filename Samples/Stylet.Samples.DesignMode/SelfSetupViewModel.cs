@@ -24,7 +24,7 @@ public class SelfSetupViewModel : Screen
     }
 
     /// <summary>
-    /// This constructor is *not* called by the designer, but will be chosen at runtime by StyletIoC
+    /// 디자이너에서는 호출하지 않으며, 런타임에 생성자 주입으로 사용합니다.
     /// </summary>
     public SelfSetupViewModel(IEventAggregator eventAggregator)
     {

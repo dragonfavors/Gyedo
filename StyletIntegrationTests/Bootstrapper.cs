@@ -1,4 +1,5 @@
-﻿using Stylet;
+﻿using Microsoft.Extensions.DependencyInjection;
+using Stylet;
 using Stylet.Logging;
 using System;
 using System.Collections.Generic;
@@ -23,7 +24,7 @@ namespace StyletIntegrationTests
             string message = e.Exception.Message;
             if (e.Exception is TargetInvocationException)
                 message = e.Exception.InnerException.Message;
-            this.Container.Get<IWindowManager>().ShowMessageBox(string.Format("Unhandled Exception: {0}", message), icon: MessageBoxImage.Error);
+            this.Services.GetRequiredService<IWindowManager>().ShowMessageBox(string.Format("Unhandled Exception: {0}", message), icon: MessageBoxImage.Error);
             e.Handled = true;
         }
     }
