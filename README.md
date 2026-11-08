@@ -76,7 +76,7 @@ WPF 프로젝트가 코어를 참조합니다. 코어에는 UI 프레임워크�
 | 이벤트 연결 | Action으로 이벤트를 메서드에 연결 가능 | View 이벤트 처리기 등으로 명시 |
 | 호출 대상 지정 | `View.ActionTarget` 제공 | 제거 |
 | 기본 메시지 박스 | Action으로 버튼 클릭 처리 | View의 버튼 이벤트로 처리 |
-| 샘플 | Action 사용 예제 포함 | Hello는 Toolkit 생성 속성·명령 사용, 나머지는 일반 명령 바인딩과 이벤트 처리 사용 |
+| 샘플 | Action 사용 예제 포함 | Toolkit 생성 명령과 일반 이벤트 처리 사용. Fody 속성 알림을 Toolkit 생성 속성으로 전환 |
 | README | 영어 | 한국어로 원본과 변경 사항 안내 |
 
 ## 템플릿 없이 WPF 앱 설정
@@ -259,7 +259,11 @@ Action 제거는 기존 사용 코드와 호환되지 않는 변경입니다. �
 <Button Command="{Binding SaveCommand}" />
 ```
 
-`SaveCommand`는 Toolkit의 `[RelayCommand]`로 생성하거나 직접 구현할 수 있습니다. 생성 속성과 명령의 연동은 [Hello 샘플](Samples/Stylet.Samples.Hello/ShellViewModel.cs)을 참고하세요. 다른 샘플에 남아 있는 [DelegateCommand](Samples/Common/DelegateCommand.cs)는 예제·테스트용이며, 라이브러리 API로 제공하지 않습니다.
+`SaveCommand`는 Toolkit의 `[RelayCommand]`로 생성하거나 직접 구현할 수 있습니다. 샘플과 통합 테스트 앱의 `DelegateCommand`는 모두 생성 명령으로 교체했습니다. 기존 XAML의 명령 이름은 유지합니다. 생성 속성과 명령의 기본 연동은 [Hello 샘플](Samples/Stylet.Samples.Hello/ShellViewModel.cs)을 참고하세요.
+
+실행 조건은 `[RelayCommand(CanExecute = nameof(CanSave))]`로 지정합니다. 조건에 영향을 주는 생성 속성에는 `[NotifyCanExecuteChangedFor(nameof(SaveCommand))]`를 붙이고, 검증 결과처럼 별도로 바뀌는 상태는 `SaveCommand.NotifyCanExecuteChanged()`로 갱신합니다. `CanSave`라는 이름만으로 자동 연결되지는 않습니다.
+
+RedditBrowser의 페이지 이동과 통합 테스트 앱의 디스패처 명령은 `Task` 반환 메서드로 전환했습니다. `NextAsync`에서 생성되는 명령 이름은 `NextCommand`이며, 실행 중에는 같은 명령의 재실행이 제한됩니다. 화면 수명주기 훅의 비동기 처리와 화면 종료 시 취소는 별도로 관리해야 합니다.
 
 ### Toolkit 속성 알림
 
@@ -283,6 +287,8 @@ public partial class UserViewModel : Screen
 ```
 
 위 코드는 변경 알림을 제공하는 `Name` 속성을 생성합니다. `Conductor`를 상속한 ViewModel에서도 사용할 수 있습니다.
+
+ModelValidation과 RedditBrowser의 Fody 의존성·설정은 제거했습니다. 해당 ViewModel은 `[ObservableProperty]`를 사용하며, 종속 속성은 `[NotifyPropertyChangedFor]`로 명시합니다. [ModelValidation 샘플](Samples/Stylet.Samples.ModelValidation/Pages/UserViewModel.cs)은 생성 속성의 자동 검증, 비밀번호 확인 재검증, 제출 버튼의 상태 갱신을 보여 줍니다. 샘플의 Toolkit 패키지 참조는 `Samples/Directory.Build.props`에서 공통으로 관리합니다.
 
 | 제거한 API | 사용할 API |
 |---|---|

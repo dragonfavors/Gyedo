@@ -1,36 +1,30 @@
-﻿using Stylet.Examples;
-using System.Windows.Input;
+﻿using CommunityToolkit.Mvvm.ComponentModel;
+using System.Threading.Tasks;
+using CommunityToolkit.Mvvm.Input;
 using Stylet.Samples.RedditBrowser.RedditApi;
 using System;
 using System.Diagnostics;
 
 namespace Stylet.Samples.RedditBrowser.Pages;
 
-public class PostsViewModel : Screen
+public partial class PostsViewModel : Screen
 {
-    private DelegateCommand closeCommand;
-    public ICommand CloseCommand => this.closeCommand ?? (this.closeCommand = new DelegateCommand(this, this.Close));
-
-    private DelegateCommand nextCommand;
-    public ICommand NextCommand => this.nextCommand ?? (this.nextCommand = new DelegateCommand(this, this.Next, () => this.CanNext));
-
-    private DelegateCommand prevCommand;
-    public ICommand PrevCommand => this.prevCommand ?? (this.prevCommand = new DelegateCommand(this, this.Prev, () => this.CanPrev));
-
-    private DelegateCommand openSelectedCommand;
-    public ICommand OpenSelectedCommand => this.openSelectedCommand ?? (this.openSelectedCommand = new DelegateCommand(this, this.OpenSelected, () => this.CanOpenSelected));
-
-    private DelegateCommand openSelectedCommentsCommand;
-    public ICommand OpenSelectedCommentsCommand => this.openSelectedCommentsCommand ?? (this.openSelectedCommentsCommand = new DelegateCommand(this, this.OpenSelectedComments, () => this.CanOpenSelectedComments));
-
     public event EventHandler<PostCommentsOpenedEventArgs> PostCommentsOpened;
 
     private readonly IRedditClient client;
 
-    public string Subreddit { get; set; }
-    public SortMode SortMode { get; set; }
-    public PostCollection PostCollection { get; private set; }
-    public Post SelectedPost { get; set; }
+    [ObservableProperty]
+    private string subreddit;
+    [ObservableProperty]
+    private SortMode sortMode;
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(CanNext), nameof(CanPrev))]
+    [NotifyCanExecuteChangedFor(nameof(NextCommand), nameof(PrevCommand))]
+    public partial PostCollection PostCollection { get; private set; }
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(CanOpenSelected), nameof(CanOpenSelectedComments))]
+    [NotifyCanExecuteChangedFor(nameof(OpenSelectedCommand), nameof(OpenSelectedCommentsCommand))]
+    private Post selectedPost;
 
     public PostsViewModel(IRedditClient client)
     {
@@ -50,24 +44,28 @@ public class PostsViewModel : Screen
         }
     }
 
+    [RelayCommand]
     public void Close()
     {
         this.RequestClose();
     }
 
     public bool CanNext => this.PostCollection != null && this.PostCollection.HasNext;
-    public async void Next()
+    [RelayCommand(CanExecute = nameof(CanNext))]
+    public async Task NextAsync()
     {
         this.PostCollection = await this.PostCollection.NextAsync();
     }
 
     public bool CanPrev => this.PostCollection != null && this.PostCollection.HasPrev;
-    public async void Prev()
+    [RelayCommand(CanExecute = nameof(CanPrev))]
+    public async Task PrevAsync()
     {
         this.PostCollection = await this.PostCollection.PrevAsync();
     }
 
     public bool CanOpenSelected => this.SelectedPost != null;
+    [RelayCommand(CanExecute = nameof(CanOpenSelected))]
     public void OpenSelected()
     {
         if (this.SelectedPost == null)
@@ -77,6 +75,7 @@ public class PostsViewModel : Screen
     }
 
     public bool CanOpenSelectedComments => this.SelectedPost != null && this.SelectedPost.NumComments > 0;
+    [RelayCommand(CanExecute = nameof(CanOpenSelectedComments))]
     public void OpenSelectedComments()
     {
         if (this.SelectedPost == null)

@@ -1,14 +1,10 @@
-﻿using Stylet.Examples;
-using System.Windows.Input;
+﻿using CommunityToolkit.Mvvm.Input;
 using System;
 
 namespace Stylet.Samples.HelloDialog;
 
-public class ShellViewModel : Screen
+public partial class ShellViewModel : Screen
 {
-    private DelegateCommand showDialogCommand;
-    public ICommand ShowDialogCommand => this.showDialogCommand ?? (this.showDialogCommand = new DelegateCommand(this, this.ShowDialog));
-
     private readonly IWindowManager windowManager;
     private readonly IDialogFactory dialogFactory;
 
@@ -29,6 +25,7 @@ public class ShellViewModel : Screen
         this.NameString = "Click the button to show the dialog";
     }
 
+    [RelayCommand]
     public void ShowDialog()
     {
         Dialog1ViewModel dialogVm = this.dialogFactory.CreateDialog1();

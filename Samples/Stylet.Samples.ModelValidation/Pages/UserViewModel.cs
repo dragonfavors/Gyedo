@@ -1,31 +1,37 @@
-﻿using Stylet.Examples;
-using System.Windows.Input;
+﻿using CommunityToolkit.Mvvm.ComponentModel;
+using CommunityToolkit.Mvvm.Input;
 using FluentValidation;
 using System;
 using System.Collections.Generic;
 
 namespace Stylet.Samples.ModelValidation.Pages;
 
-public class UserViewModel : Screen
+public partial class UserViewModel : Screen
 {
-    private DelegateCommand submitCommand;
-    public ICommand SubmitCommand => this.submitCommand ?? (this.submitCommand = new DelegateCommand(this, this.Submit, () => this.CanSubmit));
-
     private readonly IWindowManager windowManager;
 
-    public string UserName { get; set; }
-    public string Email { get; set; }
-    public string Password { get; set; }
-    public string PasswordConfirmation { get; set; }
-    public Stringable<int> Age { get; set; }
+    [ObservableProperty]
+    private string userName;
+    [ObservableProperty]
+    private string email;
+    [ObservableProperty]
+    private string password;
+    [ObservableProperty]
+    private string passwordConfirmation;
+    [ObservableProperty]
+    private Stringable<int> age;
 
     public bool ShouldAutoValidate
     {
         get => base.AutoValidate;
         set
         {
+            if (base.AutoValidate == value)
+                return;
             base.AutoValidate = value;
             this.OnPropertyChanged();
+            this.OnPropertyChanged(nameof(this.CanSubmit));
+            Execute.OnUIThread(this.SubmitCommand.NotifyCanExecuteChanged);
         }
     }
 
@@ -41,11 +47,12 @@ public class UserViewModel : Screen
     protected override void OnValidationStateChanged(IEnumerable<string> changedProperties)
     {
         base.OnValidationStateChanged(changedProperties);
-        // Fody can't weave other assemblies, so we have to manually raise this
         this.OnPropertyChanged(nameof(this.CanSubmit));
+        Execute.OnUIThread(this.SubmitCommand.NotifyCanExecuteChanged);
     }
 
     public bool CanSubmit => !this.ShouldAutoValidate || !this.HasErrors;
+    [RelayCommand(CanExecute = nameof(CanSubmit))]
     public void Submit()
     {
         if (this.Validate())

@@ -1,14 +1,17 @@
-﻿using Stylet.Samples.RedditBrowser.RedditApi;
+﻿using CommunityToolkit.Mvvm.ComponentModel;
+using Stylet.Samples.RedditBrowser.RedditApi;
 using System;
 
 namespace Stylet.Samples.RedditBrowser.Pages;
 
-public class SubredditViewModel : Conductor<IScreen>.StackNavigation
+public partial class SubredditViewModel : Conductor<IScreen>.StackNavigation
 {
     private readonly IPostCommentsViewModelFactory postCommentsViewModelFactory;
 
-    public string Subreddit { get; set; }
-    public SortMode SortMode { get; set; }
+    [ObservableProperty]
+    private string subreddit;
+    [ObservableProperty]
+    private SortMode sortMode;
     private readonly PostsViewModel posts;
 
     public SubredditViewModel(PostsViewModel posts, IPostCommentsViewModelFactory postCommentsViewModelFactory)

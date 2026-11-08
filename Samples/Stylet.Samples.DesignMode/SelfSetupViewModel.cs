@@ -1,14 +1,10 @@
-﻿using Stylet.Examples;
-using System.Windows.Input;
+﻿using CommunityToolkit.Mvvm.Input;
 using System;
 
 namespace Stylet.Samples.DesignMode;
 
-public class SelfSetupViewModel : Screen
+public partial class SelfSetupViewModel : Screen
 {
-    private DelegateCommand doSomethingCommand;
-    public ICommand DoSomethingCommand => this.doSomethingCommand ?? (this.doSomethingCommand = new DelegateCommand(this, this.DoSomething, () => this.CanDoSomething));
-
 #pragma warning disable IDE0052 // Remove unread private members
     private readonly IEventAggregator eventAggregator;
 #pragma warning restore IDE0052 // Remove unread private members
@@ -33,6 +29,7 @@ public class SelfSetupViewModel : Screen
 
     public bool CanDoSomething => false;
 
+    [RelayCommand(CanExecute = nameof(CanDoSomething))]
     public void DoSomething()
     {
     }

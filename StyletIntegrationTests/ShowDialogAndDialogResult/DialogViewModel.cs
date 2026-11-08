@@ -1,5 +1,4 @@
-﻿using Stylet.Examples;
-using System.Windows.Input;
+﻿using CommunityToolkit.Mvvm.Input;
 using Stylet;
 using System;
 using System.Collections.Generic;
@@ -9,11 +8,8 @@ using System.Threading.Tasks;
 
 namespace StyletIntegrationTests.ShowDialogAndDialogResult
 {
-    public class DialogViewModel : Screen
+    public partial class DialogViewModel : Screen
     {
-        private DelegateCommand closeCommand;
-        public ICommand CloseCommand => this.closeCommand ?? (this.closeCommand = new DelegateCommand(this, this.Close));
-
         public BindableCollection<LabelledValue<bool>> DesiredResult { get; private set; }
         public LabelledValue<bool> SelectedDesiredResult { get; set; }
 
@@ -29,6 +25,7 @@ namespace StyletIntegrationTests.ShowDialogAndDialogResult
             this.SelectedDesiredResult = this.DesiredResult[0];
         }
 
+        [RelayCommand]
         public void Close()
         {
             this.RequestClose(this.SelectedDesiredResult.Value);

@@ -16,6 +16,7 @@
     <PackageReference Include="NUnit3TestAdapter" Version="5.0.0" />
     <PackageReference Include="Microsoft.NET.Test.Sdk" Version="18.0.1" />
     <ProjectReference Include="..\Stylet\Stylet.csproj" />
-    <Compile Include="..\Samples\Common\DelegateCommand.cs" Link="Support\DelegateCommand.cs" />
+    <ProjectReference Include="..\Samples\Stylet.Samples.ModelValidation\Stylet.Samples.ModelValidation.csproj" />
+    <ProjectReference Include="..\Samples\Stylet.Samples.RedditBrowser\Stylet.Samples.RedditBrowser.csproj" />
   </ItemGroup>
 </Project>

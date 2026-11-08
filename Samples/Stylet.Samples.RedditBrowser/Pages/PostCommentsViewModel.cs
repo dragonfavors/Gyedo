@@ -1,20 +1,20 @@
-﻿using Stylet.Examples;
-using System.Windows.Input;
+﻿using CommunityToolkit.Mvvm.ComponentModel;
+using CommunityToolkit.Mvvm.Input;
 using Stylet.Samples.RedditBrowser.RedditApi;
 using System;
 
 namespace Stylet.Samples.RedditBrowser.Pages;
 
-public class PostCommentsViewModel : Screen
+public partial class PostCommentsViewModel : Screen
 {
-    private DelegateCommand goBackCommand;
-    public ICommand GoBackCommand => this.goBackCommand ?? (this.goBackCommand = new DelegateCommand(this, this.GoBack));
-
     private readonly IRedditClient client;
 
-    public string Subreddit { get; set; }
-    public string PostId36 { get; set; }
-    public CommentCollection CommentCollection { get; private set; }
+    [ObservableProperty]
+    private string subreddit;
+    [ObservableProperty]
+    private string postId36;
+    [ObservableProperty]
+    public partial CommentCollection CommentCollection { get; private set; }
 
     public PostCommentsViewModel(IRedditClient client)
     {
@@ -26,6 +26,7 @@ public class PostCommentsViewModel : Screen
         this.CommentCollection = await this.client.GetPostComments(this.Subreddit, this.PostId36);
     }
 
+    [RelayCommand]
     public void GoBack()
     {
         this.RequestClose();

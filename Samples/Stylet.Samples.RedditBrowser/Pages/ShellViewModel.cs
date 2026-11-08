@@ -7,7 +7,7 @@ public class ShellViewModel : Conductor<IScreen>.Collection.OneActive, IHandle<O
 {
     private readonly ISubredditViewModelFactory subredditViewModelFactory;
 
-    public TaskbarViewModel Taskbar { get; private set; }
+    public TaskbarViewModel Taskbar { get; }
 
     public ShellViewModel(IEventAggregator events, TaskbarViewModel taskbarViewModel, ISubredditViewModelFactory subredditViewModelFactory)
     {

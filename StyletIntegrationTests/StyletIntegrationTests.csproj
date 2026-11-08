@@ -12,11 +12,11 @@
 
   <ItemGroup>
     <ProjectReference Include="..\Stylet\Stylet.csproj" />
+    <PackageReference Include="CommunityToolkit.Mvvm" Version="8.4.2" />
   </ItemGroup>
 
   <ItemGroup>
     <Compile Include="**\*.cs" Exclude="obj\**" />
-    <Compile Include="..\Samples\Common\DelegateCommand.cs" Link="Support\DelegateCommand.cs" />
     <None Remove="**\*.cs" />
 
     <ApplicationDefinition Include="App.xaml">

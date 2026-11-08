@@ -4,7 +4,6 @@
     <UseWPF>true</UseWPF>
   </PropertyGroup>
   <ItemGroup>
-    <PackageReference Include="PropertyChanged.Fody" Version="3.4.0" PrivateAssets="All" />
     <PackageReference Include="RestEase" Version="1.5.5" />
   </ItemGroup>
   <ItemGroup>

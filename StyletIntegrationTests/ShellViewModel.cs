@@ -1,5 +1,4 @@
-﻿using Stylet.Examples;
-using System.Windows.Input;
+﻿using CommunityToolkit.Mvvm.Input;
 using Stylet;
 using System;
 using System.Collections.Generic;
@@ -10,23 +9,8 @@ using System.Windows;
 
 namespace StyletIntegrationTests
 {
-    public class ShellViewModel : Screen
+    public partial class ShellViewModel : Screen
     {
-        private DelegateCommand showDialogAndDialogResultCommand;
-        public ICommand ShowDialogAndDialogResultCommand => this.showDialogAndDialogResultCommand ?? (this.showDialogAndDialogResultCommand = new DelegateCommand(this, this.ShowDialogAndDialogResult));
-
-        private DelegateCommand showWindowLifecycleCommand;
-        public ICommand ShowWindowLifecycleCommand => this.showWindowLifecycleCommand ?? (this.showWindowLifecycleCommand = new DelegateCommand(this, this.ShowWindowLifecycle));
-
-        private DelegateCommand throwExceptionCommand;
-        public ICommand ThrowExceptionCommand => this.throwExceptionCommand ?? (this.throwExceptionCommand = new DelegateCommand(this, this.ThrowException));
-
-        private DelegateCommand testDispatcherCommand;
-        public ICommand TestDispatcherCommand => this.testDispatcherCommand ?? (this.testDispatcherCommand = new DelegateCommand(this, this.TestDispatcher));
-
-        private DelegateCommand showCommandExecutedCommand;
-        public ICommand ShowCommandExecutedCommand => this.showCommandExecutedCommand ?? (this.showCommandExecutedCommand = new DelegateCommand(this, this.ShowCommandExecuted));
-
         private readonly IWindowManager windowManager;
 
         public ShellViewModel(IWindowManager windowManager)
@@ -45,24 +29,28 @@ namespace StyletIntegrationTests
             set => this.SetProperty(ref this._showDialogAndDialogResultDialogResult, value);
         }
 
+        [RelayCommand]
         public void ShowDialogAndDialogResult()
         {
             var dialog = new ShowDialogAndDialogResult.DialogViewModel();
             this.ShowDialogAndDialogResultDialogResult = this.windowManager.ShowDialog(dialog);
         }
 
+        [RelayCommand]
         public void ShowWindowLifecycle()
         {
             var window = new WindowLifecycle.WindowViewModel(this.windowManager);
             this.windowManager.ShowWindow(window);
         }
 
+        [RelayCommand]
         public void ThrowException()
         {
             throw new Exception("Hello");
         }
 
-        public async void TestDispatcher()
+        [RelayCommand]
+        public async Task TestDispatcherAsync()
         {
             IDispatcher dispatcher = Execute.Dispatcher;
             var log = new List<string>();
@@ -83,6 +71,7 @@ namespace StyletIntegrationTests
                 this.windowManager.ShowMessageBox("Failure");
         }
 
+        [RelayCommand]
         public void ShowCommandExecuted()
         {
             this.windowManager.ShowMessageBox("Success!");

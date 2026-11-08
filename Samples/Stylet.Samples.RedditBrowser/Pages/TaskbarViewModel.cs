@@ -1,5 +1,5 @@
-﻿using Stylet.Examples;
-using System.Windows.Input;
+﻿using CommunityToolkit.Mvvm.ComponentModel;
+using CommunityToolkit.Mvvm.Input;
 using Stylet.Samples.RedditBrowser.Events;
 using Stylet.Samples.RedditBrowser.RedditApi;
 using System;
@@ -7,17 +7,18 @@ using System.Collections.Generic;
 
 namespace Stylet.Samples.RedditBrowser.Pages;
 
-public class TaskbarViewModel : Screen
+public partial class TaskbarViewModel : Screen
 {
-    private DelegateCommand openCommand;
-    public ICommand OpenCommand => this.openCommand ?? (this.openCommand = new DelegateCommand(this, this.Open, () => this.CanOpen));
-
     private readonly IEventAggregator events;
 
-    public string Subreddit { get; set; }
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(CanOpen))]
+    [NotifyCanExecuteChangedFor(nameof(OpenCommand))]
+    private string subreddit;
 
-    public IEnumerable<SortMode> SortModes { get; private set; }
-    public SortMode SelectedSortMode { get; set; }
+    public IEnumerable<SortMode> SortModes { get; }
+    [ObservableProperty]
+    private SortMode selectedSortMode;
 
     public TaskbarViewModel(IEventAggregator events)
     {
@@ -27,6 +28,7 @@ public class TaskbarViewModel : Screen
     }
 
     public bool CanOpen => !string.IsNullOrWhiteSpace(this.Subreddit);
+    [RelayCommand(CanExecute = nameof(CanOpen))]
     public void Open()
     {
         this.events.Publish(new OpenSubredditEvent() { Subreddit = this.Subreddit, SortMode = this.SelectedSortMode });
