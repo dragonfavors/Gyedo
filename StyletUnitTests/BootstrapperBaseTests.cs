@@ -90,15 +90,20 @@ public class BootstrapperBaseTests
 
     private class FakeDispatcher : IDispatcher
     {
-        public void Post(Action action)
+        public void Post(Action action, DispatchPriority priority = DispatchPriority.Lowest)
         {
             throw new NotImplementedException();
         }
 
-        public void Send(Action action)
+        public void Send(Action action, DispatchPriority priority = DispatchPriority.Lowest)
         {
             throw new NotImplementedException();
         }
+
+        public Task InvokeAsync(Action action, DispatchPriority priority = DispatchPriority.Lowest, CancellationToken cancellationToken = default) => throw new NotSupportedException();
+        public Task<T> InvokeAsync<T>(Func<T> action, DispatchPriority priority = DispatchPriority.Lowest, CancellationToken cancellationToken = default) => throw new NotSupportedException();
+        public Task InvokeAsync(Func<Task> action, DispatchPriority priority = DispatchPriority.Lowest, CancellationToken cancellationToken = default) => throw new NotSupportedException();
+        public Task<T> InvokeAsync<T>(Func<Task<T>> action, DispatchPriority priority = DispatchPriority.Lowest, CancellationToken cancellationToken = default) => throw new NotSupportedException();
 
         public bool IsCurrent => throw new NotImplementedException();
     }

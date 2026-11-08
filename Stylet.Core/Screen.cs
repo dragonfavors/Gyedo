@@ -135,7 +135,7 @@ public class Screen : ValidatingModelBase, IScreen, IViewLifecycleAware
                 }
                 throw;
             }
-            await Execute.OnUIThreadAsync(() => this.Activated?.Invoke(this, new ActivationEventArgs(previous, initial)));
+            await Execute.RunAsync(() => this.Activated?.Invoke(this, new ActivationEventArgs(previous, initial)));
             await this.NotifyStateChangedAsync(previous);
         });
     }
@@ -160,7 +160,7 @@ public class Screen : ValidatingModelBase, IScreen, IViewLifecycleAware
         this.deactivationPending = false;
         this.activationCancellation?.Dispose();
         this.activationCancellation = null;
-        await Execute.OnUIThreadAsync(() => this.Deactivated?.Invoke(this, new DeactivationEventArgs(previous)));
+        await Execute.RunAsync(() => this.Deactivated?.Invoke(this, new DeactivationEventArgs(previous)));
         await this.NotifyStateChangedAsync(previous);
     }
 
@@ -186,7 +186,7 @@ public class Screen : ValidatingModelBase, IScreen, IViewLifecycleAware
             await this.OnClosedAsync();
             this.closePending = false;
             ScreenState previous = this.closePreviousState;
-            await Execute.OnUIThreadAsync(() => this.Closed?.Invoke(this, new CloseEventArgs(previous)));
+            await Execute.RunAsync(() => this.Closed?.Invoke(this, new CloseEventArgs(previous)));
             await this.NotifyStateChangedAsync(previous);
         });
     }
@@ -211,7 +211,7 @@ public class Screen : ValidatingModelBase, IScreen, IViewLifecycleAware
     }
 
     private Task NotifyStateChangedAsync(ScreenState previous) =>
-        previous == this.ScreenState ? Task.CompletedTask : Execute.OnUIThreadAsync(() =>
+        previous == this.ScreenState ? Task.CompletedTask : Execute.RunAsync(() =>
             this.StateChanged?.Invoke(this, new ScreenStateChangedEventArgs(this.ScreenState, previous)));
 
     /// <summary>Toolkit의 활성 메시지 수신 등록만 수행합니다. 사용자 훅은 OnActivatedAsync입니다.</summary>

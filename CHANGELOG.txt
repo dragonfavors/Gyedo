@@ -4,6 +4,10 @@ Stylet Changelog
 Unreleased
 ----------
 
+ - Execute의 편의 API를 Run/RunAsync, InvokeAsync, Post, Send로 정리하고 기존 OnUIThread·PostToUIThread 계열 이름을 제거합니다. 실행 시점과 완료 대기 동작은 유지합니다.
+ - IDispatcher에 Action·Func<T>·Func<Task>·Func<Task<T>>용 InvokeAsync와 실행 전 취소를 추가합니다.
+ - 공통 우선순위 Lowest/Low/Middle/High/Highest를 WPF Background/Input/Loaded/Render/Normal에 연결하고 기본값을 Lowest로 사용합니다.
+ - Execute의 비동기 호출은 내부 Task까지 기다리며 WPF 게시 중단·종료를 취소 상태로 전달합니다. 사용자 정의 IDispatcher 구현은 새 멤버와 우선순위 인자를 구현해야 합니다.
  - IEventAggregator·IHandle·발행 확장을 제거하고 Toolkit IMessenger로 메시징을 통일합니다(호환성 변경).
  - 호스트는 IMessenger를 기본 등록하고, RedditBrowser는 AlwaysMessenger와 비동기 요청 응답으로 기존 수신 기간을 유지하며 탐색 완료를 기다립니다.
  - Screen에 최초 활성화부터 닫기까지 수신하는 LongMessenger와 인스턴스 수명 동안 수신하는 AlwaysMessenger를 추가합니다.

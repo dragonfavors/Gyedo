@@ -1,4 +1,6 @@
-﻿using NUnit.Framework;
+using System.Threading.Tasks;
+using System.Threading;
+using NUnit.Framework;
 using Stylet;
 using System;
 using System.Collections.Generic;
@@ -16,16 +18,21 @@ public class BindableCollectionTests
     private class TestDispatcher : IDispatcher
     {
         public Action PostAction;
-        public void Post(Action action)
+        public void Post(Action action, DispatchPriority priority = DispatchPriority.Lowest)
         {
             this.PostAction = action;
         }
 
         public Action SendAction;
-        public void Send(Action action)
+        public void Send(Action action, DispatchPriority priority = DispatchPriority.Lowest)
         {
             this.SendAction = action;
         }
+
+        public Task InvokeAsync(Action action, DispatchPriority priority = DispatchPriority.Lowest, CancellationToken cancellationToken = default) => throw new NotSupportedException();
+        public Task<T> InvokeAsync<T>(Func<T> action, DispatchPriority priority = DispatchPriority.Lowest, CancellationToken cancellationToken = default) => throw new NotSupportedException();
+        public Task InvokeAsync(Func<Task> action, DispatchPriority priority = DispatchPriority.Lowest, CancellationToken cancellationToken = default) => throw new NotSupportedException();
+        public Task<T> InvokeAsync<T>(Func<Task<T>> action, DispatchPriority priority = DispatchPriority.Lowest, CancellationToken cancellationToken = default) => throw new NotSupportedException();
 
         public bool IsCurrent
         {

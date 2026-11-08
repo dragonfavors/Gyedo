@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Runtime.ExceptionServices;
 using System.Windows.Data;
 
@@ -25,7 +25,7 @@ public class RethrowingBinding : Binding
     private object ExceptionFilter(object bindExpression, Exception exception)
     {
         var edi = ExceptionDispatchInfo.Capture(exception);
-        Execute.OnUIThread(() => edi.Throw());
+        Execute.Run(() => edi.Throw());
         return exception;
     }
 }

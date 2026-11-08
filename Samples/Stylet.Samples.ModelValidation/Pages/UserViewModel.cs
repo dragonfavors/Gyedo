@@ -33,7 +33,7 @@ public partial class UserViewModel : Screen
             base.AutoValidate = value;
             this.OnPropertyChanged();
             this.OnPropertyChanged(nameof(this.CanSubmit));
-            Execute.OnUIThread(this.SubmitCommand.NotifyCanExecuteChanged);
+            Execute.Run(this.SubmitCommand.NotifyCanExecuteChanged);
         }
     }
 
@@ -50,7 +50,7 @@ public partial class UserViewModel : Screen
     {
         base.OnValidationStateChanged(changedProperties);
         this.OnPropertyChanged(nameof(this.CanSubmit));
-        Execute.OnUIThread(this.SubmitCommand.NotifyCanExecuteChanged);
+        Execute.Run(this.SubmitCommand.NotifyCanExecuteChanged);
     }
 
     public bool CanSubmit => !this.ShouldAutoValidate || !this.HasErrors;

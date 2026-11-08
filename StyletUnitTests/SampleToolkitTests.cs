@@ -139,7 +139,8 @@ public class SampleToolkitTests
         var queued = new Queue<Action>();
         var dispatcher = new Mock<IDispatcher>();
         dispatcher.SetupGet(x => x.IsCurrent).Returns(false);
-        dispatcher.Setup(x => x.Post(It.IsAny<Action>())).Callback<Action>(queued.Enqueue);
+        dispatcher.Setup(x => x.Post(It.IsAny<Action>(), DispatchPriority.Lowest))
+            .Callback<Action, DispatchPriority>((action, _) => queued.Enqueue(action));
         Execute.Dispatcher = dispatcher.Object;
         int changes = 0;
         model.SubmitCommand.CanExecuteChanged += (_, _) => changes++;

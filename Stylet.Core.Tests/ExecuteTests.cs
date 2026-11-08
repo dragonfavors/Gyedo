@@ -1,4 +1,6 @@
-﻿using Moq;
+using System.Threading;
+using System.Threading.Tasks;
+using Moq;
 using NUnit.Framework;
 using Stylet;
 using System;
@@ -8,6 +10,21 @@ namespace StyletUnitTests;
 [TestFixture]
 public class ExecuteTests
 {
+    private static void CaptureAsync(Mock<IDispatcher> dispatcher, Action<Action> capture)
+    {
+        dispatcher.Setup(x => x.InvokeAsync(It.IsAny<Action>(), DispatchPriority.Lowest, CancellationToken.None))
+            .Returns((Action action, DispatchPriority _, CancellationToken _) =>
+            {
+                var completion = new TaskCompletionSource();
+                capture(() =>
+                {
+                    try { action(); completion.SetResult(); }
+                    catch (Exception error) { completion.SetException(error); }
+                });
+                return completion.Task;
+            });
+    }
+
     private IDispatcher dispatcher;
 
     [SetUp]
@@ -23,16 +40,16 @@ public class ExecuteTests
     }
 
     [Test]
-    public void OnUIThreadSyncExecutesUsingDispatcherIfNotCurrent()
+    public void SendExecutesUsingDispatcherIfNotCurrent()
     {
         var sync = new Mock<IDispatcher>();
         Execute.Dispatcher = sync.Object;
 
         Action passedAction = null;
-        sync.Setup(x => x.Send(It.IsAny<Action>())).Callback((Action a) => passedAction = a);
+        sync.Setup(x => x.Send(It.IsAny<Action>(), DispatchPriority.Lowest)).Callback<Action, DispatchPriority>((a, _) => passedAction = a);
 
         bool actionCalled = false;
-        Execute.OnUIThreadSync(() => actionCalled = true);
+        Execute.Send(() => actionCalled = true);
 
         Assert.IsFalse(actionCalled);
         passedAction();
@@ -40,7 +57,7 @@ public class ExecuteTests
     }
 
     [Test]
-    public void OnUIThreadSyncExecutesSynchronouslyIfDispatcherIsCurrent()
+    public void SendExecutesSynchronouslyIfDispatcherIsCurrent()
     {
         var sync = new Mock<IDispatcher>();
         Execute.Dispatcher = sync.Object;
@@ -48,23 +65,23 @@ public class ExecuteTests
         sync.SetupGet(x => x.IsCurrent).Returns(true);
 
         bool actionCalled = false;
-        Execute.OnUIThreadSync(() => actionCalled = true);
+        Execute.Send(() => actionCalled = true);
 
         Assert.IsTrue(actionCalled);
-        sync.Verify(x => x.Send(It.IsAny<Action>()), Times.Never);
+        sync.Verify(x => x.Send(It.IsAny<Action>(), DispatchPriority.Lowest), Times.Never);
     }
 
     [Test]
-    public void PostToUIThreadExecutesUsingDispatcher()
+    public void PostExecutesUsingDispatcher()
     {
         var sync = new Mock<IDispatcher>();
         Execute.Dispatcher = sync.Object;
 
         Action passedAction = null;
-        sync.Setup(x => x.Post(It.IsAny<Action>())).Callback((Action a) => passedAction = a);
+        sync.Setup(x => x.Post(It.IsAny<Action>(), DispatchPriority.Lowest)).Callback<Action, DispatchPriority>((a, _) => passedAction = a);
 
         bool actionCalled = false;
-        Execute.PostToUIThread(() => actionCalled = true);
+        Execute.Post(() => actionCalled = true);
 
         Assert.IsFalse(actionCalled);
         passedAction();
@@ -72,16 +89,16 @@ public class ExecuteTests
     }
 
     [Test]
-    public void PostToUIThreadAsyncExecutesUsingDispatcher()
+    public void InvokeAsyncExecutesUsingDispatcher()
     {
         var sync = new Mock<IDispatcher>();
         Execute.Dispatcher = sync.Object;
 
         Action passedAction = null;
-        sync.Setup(x => x.Post(It.IsAny<Action>())).Callback((Action a) => passedAction = a);
+        CaptureAsync(sync, action => passedAction = action);
 
         bool actionCalled = false;
-        System.Threading.Tasks.Task task = Execute.PostToUIThreadAsync(() => actionCalled = true);
+        System.Threading.Tasks.Task task = Execute.InvokeAsync(() => { actionCalled = true; });
 
         Assert.IsFalse(task.IsCompleted);
         Assert.IsFalse(actionCalled);
@@ -91,16 +108,16 @@ public class ExecuteTests
     }
 
     [Test]
-    public void OnUIThreadExecutesUsingDispatcherIfNotCurrent()
+    public void RunExecutesUsingDispatcherIfNotCurrent()
     {
         var sync = new Mock<IDispatcher>();
         Execute.Dispatcher = sync.Object;
 
         Action passedAction = null;
-        sync.Setup(x => x.Post(It.IsAny<Action>())).Callback((Action a) => passedAction = a);
+        sync.Setup(x => x.Post(It.IsAny<Action>(), DispatchPriority.Lowest)).Callback<Action, DispatchPriority>((a, _) => passedAction = a);
 
         bool actionCalled = false;
-        Execute.OnUIThread(() => actionCalled = true);
+        Execute.Run(() => actionCalled = true);
 
         Assert.IsFalse(actionCalled);
         passedAction();
@@ -108,7 +125,7 @@ public class ExecuteTests
     }
 
     [Test]
-    public void OnUIThreadExecutesSynchronouslyIfCurrent()
+    public void RunExecutesSynchronouslyIfCurrent()
     {
         var sync = new Mock<IDispatcher>();
         Execute.Dispatcher = sync.Object;
@@ -116,22 +133,22 @@ public class ExecuteTests
         sync.SetupGet(x => x.IsCurrent).Returns(true);
 
         bool actionCalled = false;
-        Execute.OnUIThread(() => actionCalled = true);
+        Execute.Run(() => actionCalled = true);
 
         Assert.IsTrue(actionCalled);
     }
 
     [Test]
-    public void OnUIThreadAsyncExecutesAsynchronouslyIfNotCurrent()
+    public void RunAsyncExecutesAsynchronouslyIfNotCurrent()
     {
         var sync = new Mock<IDispatcher>();
         Execute.Dispatcher = sync.Object;
 
         Action passedAction = null;
-        sync.Setup(x => x.Post(It.IsAny<Action>())).Callback((Action a) => passedAction = a);
+        CaptureAsync(sync, action => passedAction = action);
 
         bool actionCalled = false;
-        System.Threading.Tasks.Task task = Execute.OnUIThreadAsync(() => actionCalled = true);
+        System.Threading.Tasks.Task task = Execute.RunAsync(() => { actionCalled = true; });
 
         Assert.IsFalse(task.IsCompleted);
         Assert.IsFalse(actionCalled);
@@ -141,7 +158,7 @@ public class ExecuteTests
     }
 
     [Test]
-    public void OnUIThreadAsyncExecutesSynchronouslyIfCurrent()
+    public void RunAsyncExecutesSynchronouslyIfCurrent()
     {
         var sync = new Mock<IDispatcher>();
         Execute.Dispatcher = sync.Object;
@@ -149,23 +166,23 @@ public class ExecuteTests
         sync.SetupGet(x => x.IsCurrent).Returns(true);
 
         bool actionCalled = false;
-        System.Threading.Tasks.Task task = Execute.OnUIThreadAsync(() => actionCalled = true);
+        System.Threading.Tasks.Task task = Execute.RunAsync(() => actionCalled = true);
 
         Assert.IsTrue(task.IsCompleted);
         Assert.IsTrue(actionCalled);
     }
 
     [Test]
-    public void OnUIThreadSyncPropagatesException()
+    public void SendPropagatesException()
     {
         var sync = new Mock<IDispatcher>();
         Execute.Dispatcher = sync.Object;
 
         var ex = new Exception("testy");
-        sync.Setup(x => x.Send(It.IsAny<Action>())).Callback<Action>(a => a());
+        sync.Setup(x => x.Send(It.IsAny<Action>(), DispatchPriority.Lowest)).Callback<Action, DispatchPriority>((a, _) => a());
 
         Exception caughtEx = null;
-        try { Execute.OnUIThreadSync(() => throw ex); }
+        try { Execute.Send(() => throw ex); }
         catch (Exception e) { caughtEx = e; }
 
         Assert.IsInstanceOf<System.Reflection.TargetInvocationException>(caughtEx);
@@ -173,16 +190,16 @@ public class ExecuteTests
     }
 
     [Test]
-    public void OnUIThreadAsyncPropagatesException()
+    public void RunAsyncPropagatesException()
     {
         var sync = new Mock<IDispatcher>();
         Execute.Dispatcher = sync.Object;
 
         Action passedAction = null;
-        sync.Setup(x => x.Post(It.IsAny<Action>())).Callback((Action a) => passedAction = a);
+        CaptureAsync(sync, action => passedAction = action);
 
         var ex = new Exception("test");
-        System.Threading.Tasks.Task task = Execute.OnUIThreadAsync(() => throw ex);
+        System.Threading.Tasks.Task task = Execute.RunAsync((Action)(() => throw ex));
 
         passedAction();
         Assert.IsTrue(task.IsFaulted);
@@ -190,16 +207,16 @@ public class ExecuteTests
     }
 
     [Test]
-    public void PostToUIThreadAsyncPrepagatesException()
+    public void InvokeAsyncPrepagatesException()
     {
         var sync = new Mock<IDispatcher>();
         Execute.Dispatcher = sync.Object;
 
         Action passedAction = null;
-        sync.Setup(x => x.Post(It.IsAny<Action>())).Callback((Action a) => passedAction = a);
+        CaptureAsync(sync, action => passedAction = action);
 
         var ex = new Exception("test");
-        System.Threading.Tasks.Task task = Execute.PostToUIThreadAsync(() => throw ex);
+        System.Threading.Tasks.Task task = Execute.InvokeAsync((Action)(() => throw ex));
 
         passedAction();
         Assert.IsTrue(task.IsFaulted);

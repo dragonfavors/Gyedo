@@ -189,6 +189,51 @@ WPF는 닫기 이벤트를 잠시 취소하고 VM의 종료가 끝난 뒤 실제
 
 </details>
 
+## UI 디스패처와 우선순위
+
+`IDispatcher`는 `Action`, `Func<T>`, `Func<Task>`, `Func<Task<T>>`의 실행을 지원합니다. **비동기 콜백은 내부 Task가 끝나야 호출한 Task도 완료됩니다.** 예외와 취소도 호출자에게 전달합니다.
+
+| Execute API | 언제 시작하는가 | 완료 대기 |
+|---|---|---|
+| `RunAsync` | 현재 UI이면 바로, 아니면 큐에 게시 | 내부 Task까지 await |
+| `InvokeAsync` | 항상 큐에 게시 | 내부 Task까지 await |
+| `Run` | 현재 UI이면 바로, 아니면 게시 후 반환 | 다른 스레드에서는 기다리지 않음 |
+| `Post` | 큐에 게시 후 반환 | 기다리지 않음 |
+| `Send` | 현재 UI이면 바로, 아니면 UI로 동기 전달 | 호출 스레드를 막고 기다림 |
+
+일반 UI 실행은 `RunAsync`, 우선순위에 따라 큐에서 처리하거나 다른 UI 작업에 양보하려면 `InvokeAsync`를 사용합니다.
+
+| 공통 우선순위 | WPF 매핑 |
+|---|---|
+| `Lowest` — 기본값 | `Background` |
+| `Low` | `Input` |
+| `Middle` | `Loaded` |
+| `High` | `Render` |
+| `Highest` | `Normal` |
+
+공통 계약에는 WPF 타입이 없습니다. Avalonia 등 다른 UI 어댑터도 같은 계약을 구현할 수 있으며, 실제 대응 관계는 각 어댑터가 정합니다. 현재 제공하는 UI 구현은 WPF입니다.
+
+VM의 비동기 메서드 안에서 사용하는 예입니다. `cancellationToken`은 호출자가 받은 토큰입니다.
+
+```csharp
+await Execute.InvokeAsync(async () =>
+{
+    await Task.Delay(100, cancellationToken); // 실제 비동기 작업으로 교체
+    this.DisplayName = "완료";
+}, DispatchPriority.Lowest, cancellationToken);
+
+string title = await Execute.Dispatcher.InvokeAsync(
+    () => this.DisplayName, DispatchPriority.Low);
+```
+
+- `IDispatcher.InvokeAsync`·`Execute.InvokeAsync`: WPF에서는 UI 스레드에서도 큐에 게시합니다.
+- `Execute.RunAsync`: 현재 UI 스레드이면 즉시 시작하고, 아니면 게시합니다. 우선순위로 UI에 양보하려면 위 게시 API를 사용합니다.
+- `Post`는 완료를 기다리지 않습니다. `Send`는 동기 실행·대기이며 같은 UI에서는 직접 실행합니다. 이 메서드들은 `Action`용이므로 async 람다는 `InvokeAsync` 또는 Execute의 Async 메서드에 전달합니다.
+- 토큰은 실행 전 게시를 취소합니다. 시작한 작업은 강제 중단하지 않으므로 예제처럼 내부 작업에도 토큰을 전달합니다. 우선순위는 최초 게시에 적용하며 await 이후의 모든 실행 순서를 보장하지 않습니다.
+- Dispatcher 종료로 실행되지 못한 대기 작업은 취소된 Task가 됩니다. 이미 시작한 UI 작업은 Dispatcher를 종료하기 전에 정리해야 합니다.
+
+WPF 연결 전의 `SynchronousDispatcher`는 현재 스레드에서 즉시 시작하는 테스트·비 UI용 구현입니다. 우선순위 정렬은 하지 않습니다. 컬렉션과 속성 알림의 스레드 정책은 [위키](https://github.com/dragonfavors/Stylet.MvvmToolkit/wiki/Threading-and-Collections)를 참고하세요.
+
 ## 템플릿 없이 WPF 앱 설정
 
 일반 WPF .NET 10 프로젝트를 만든 뒤 아래 순서로 연결합니다. 프로젝트 이름은 `MyApp`으로 가정합니다.
@@ -413,7 +458,7 @@ ModelValidation과 RedditBrowser의 Fody 의존성·설정은 제거했습니다
 
 `Screen`과 `ValidatingModelBase`의 `PropertyChangedDispatcher` 및 `Execute.DefaultPropertyChangedDispatcher`는 유지합니다. 생성 속성도 기존 `IModelValidator` 자동·비동기 검증을 거치며, `PropertyChanged`와 `ErrorsChanged` 알림에 같은 디스패처를 사용합니다. 검증 구현을 `ObservableValidator`로 바꾼 것은 아니므로 `Screen`에는 `[NotifyDataErrorInfo]`를 적용할 수 없습니다.
 
-`PropertyChanging`, 생성된 변경 콜백, 명령 상태 갱신은 호출한 스레드에서 실행됩니다. UI 상태를 변경할 때는 필요에 따라 `Execute.OnUIThreadAsync(...)`로 변경 작업 자체를 UI 스레드에서 수행하세요. 기본 알림 디스패처도 호출한 스레드에서 동기 실행합니다.
+`PropertyChanging`, 생성된 변경 콜백, 명령 상태 갱신은 호출한 스레드에서 실행됩니다. UI 상태를 변경할 때는 필요에 따라 `Execute.RunAsync(...)`로 변경 작업 자체를 UI 스레드에서 수행하세요. 기본 알림 디스패처도 호출한 스레드에서 동기 실행합니다.
 
 ### 이전 호환 API 정리
 

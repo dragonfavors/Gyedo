@@ -1,10 +1,11 @@
 using System;
+using System.Threading;
 using System.Threading.Tasks;
 
 namespace Stylet;
 
 /// <summary>
-/// Static class providing methods to easily run an action on the UI thread in various ways, and some other things
+/// UI 실행과 게시를 제공하는 편의 API입니다. Run 계열은 현재 UI에서 즉시 시작하고 InvokeAsync는 게시합니다.
 /// </summary>
 public static class Execute
 {
@@ -35,51 +36,70 @@ public static class Execute
     }
 
     /// <summary>
-    /// Dispatches the given action to be run on the UI thread asynchronously, even if the current thread is the UI thread
+    /// Action을 게시하고 반환합니다. 완료를 기다리려면 InvokeAsync를 사용합니다.
     /// </summary>
     /// <param name="action">Action to run on the UI thread</param>
-    public static void PostToUIThread(Action action)
+    public static void Post(Action action)
+        => Post(action, DispatchPriority.Lowest);
+
+    /// <summary>지정한 우선순위로 게시합니다. 비동기 콜백은 InvokeAsync를 사용합니다.</summary>
+    public static void Post(Action action, DispatchPriority priority)
     {
-        Dispatcher.Post(action);
+        SynchronousDispatcher.ValidateArguments(action, priority);
+        Dispatcher.Post(action, priority);
     }
 
     /// <summary>
-    /// Dispatches the given action to be run on the UI thread asynchronously, and returns a task which completes when the action completes, even if the current thread is the UI thread
+    /// Action을 게시하고 실행 완료까지 기다립니다. 현재 UI 스레드에서도 게시합니다.
     /// </summary>
-    /// <remarks>DO NOT BLOCK waiting for this Task - you'll cause a deadlock. Use PostToUIThread instead</remarks>
+    /// <remarks>UI 스레드를 Wait나 Result로 막지 말고 반환 Task를 await합니다.</remarks>
     /// <param name="action">Action to run on the UI thread</param>
+    /// <param name="priority">게시 우선순위입니다.</param>
+    /// <param name="cancellationToken">실행 전 게시를 취소하는 토큰입니다.</param>
     /// <returns>Task which completes when the action has been run</returns>
-    public static Task PostToUIThreadAsync(Action action)
+    public static Task InvokeAsync(Action action, DispatchPriority priority = DispatchPriority.Lowest, CancellationToken cancellationToken = default)
     {
-        return PostOnUIThreadInternalAsync(action);
+        return Dispatcher.InvokeAsync(action, priority, cancellationToken);
     }
 
     /// <summary>
-    /// Dispatches the given action to be run on the UI thread asynchronously, or runs it synchronously if the current thread is the UI thread
+    /// 현재 UI이면 Action을 즉시 실행하고, 아니면 게시 후 반환합니다. 완료 대기는 RunAsync를 사용합니다.
     /// </summary>
     /// <param name="action">Action to run on the UI thread</param>
-    public static void OnUIThread(Action action)
+    public static void Run(Action action)
+        => Run(action, DispatchPriority.Lowest);
+
+    /// <summary>현재 UI 스레드이면 즉시 실행하고, 아니면 지정한 우선순위로 게시합니다.</summary>
+    public static void Run(Action action, DispatchPriority priority)
     {
-        if (Dispatcher.IsCurrent)
+        SynchronousDispatcher.ValidateArguments(action, priority);
+        IDispatcher dispatcher = Dispatcher;
+        if (dispatcher.IsCurrent)
             action();
         else
-            Dispatcher.Post(action);
+            dispatcher.Post(action, priority);
     }
 
     /// <summary>
-    /// Dispatches the given action to be run on the UI thread and blocks until it completes, or runs it synchronously if the current thread is the UI thread
+    /// UI에서 동기 실행하고 완료까지 호출 스레드를 대기시킵니다. 현재 UI이면 직접 실행합니다.
     /// </summary>
     /// <param name="action">Action to run on the UI thread</param>
-    public static void OnUIThreadSync(Action action)
+    public static void Send(Action action)
+        => Send(action, DispatchPriority.Lowest);
+
+    /// <summary>UI에서 동기 실행합니다. 다른 스레드에서의 대기에만 우선순위를 적용합니다.</summary>
+    public static void Send(Action action, DispatchPriority priority)
     {
+        SynchronousDispatcher.ValidateArguments(action, priority);
+        IDispatcher dispatcher = Dispatcher;
         Exception exception = null;
-        if (Dispatcher.IsCurrent)
+        if (dispatcher.IsCurrent)
         {
             action();
         }
         else
         {
-            Dispatcher.Send(() =>
+            dispatcher.Send(() =>
             {
                 try
                 {
@@ -89,7 +109,7 @@ public static class Execute
                 {
                     exception = e;
                 }
-            });
+            }, priority);
 
             if (exception != null)
                 throw new System.Reflection.TargetInvocationException("An error occurred while dispatching a call to the UI Thread", exception);
@@ -97,38 +117,48 @@ public static class Execute
     }
 
     /// <summary>
-    /// Dispatches the given action to be run on the UI thread and returns a task that completes when the action completes, or runs it synchronously if the current thread is the UI thread
+    /// 현재 UI이면 Action을 즉시 시작하고, 아니면 게시한 뒤 완료까지 기다립니다.
     /// </summary>
     /// <param name="action">Action to run on the UI thread</param>
+    /// <param name="priority">게시 우선순위입니다. 현재 UI에서 즉시 실행할 때는 사용하지 않습니다.</param>
+    /// <param name="cancellationToken">실행 전 취소 토큰입니다.</param>
     /// <returns>Task which completes when the action has been run</returns>
-    public static Task OnUIThreadAsync(Action action)
+    public static Task RunAsync(Action action, DispatchPriority priority = DispatchPriority.Lowest, CancellationToken cancellationToken = default)
     {
-        if (Dispatcher.IsCurrent)
-        {
-            action();
-            return Task.FromResult(false);
-        }
-        else
-        {
-            return PostOnUIThreadInternalAsync(action);
-        }
+        IDispatcher dispatcher = Dispatcher;
+        return (dispatcher.IsCurrent ? SynchronousDispatcher.Instance : dispatcher).InvokeAsync(action, priority, cancellationToken);
     }
 
-    private static Task PostOnUIThreadInternalAsync(Action action)
+    /// <summary>콜백을 게시하고 반환값을 기다립니다.</summary>
+    public static Task<T> InvokeAsync<T>(Func<T> action, DispatchPriority priority = DispatchPriority.Lowest, CancellationToken cancellationToken = default)
+        => Dispatcher.InvokeAsync(action, priority, cancellationToken);
+
+    /// <summary>비동기 콜백을 게시하고 내부 Task 완료까지 기다립니다.</summary>
+    public static Task InvokeAsync(Func<Task> action, DispatchPriority priority = DispatchPriority.Lowest, CancellationToken cancellationToken = default)
+        => Dispatcher.InvokeAsync(action, priority, cancellationToken);
+
+    /// <summary>비동기 콜백을 게시하고 내부 Task의 결과를 기다립니다.</summary>
+    public static Task<T> InvokeAsync<T>(Func<Task<T>> action, DispatchPriority priority = DispatchPriority.Lowest, CancellationToken cancellationToken = default)
+        => Dispatcher.InvokeAsync(action, priority, cancellationToken);
+
+    /// <summary>현재 UI이면 즉시 시작하고, 아니면 게시한 뒤 반환값을 기다립니다.</summary>
+    public static Task<T> RunAsync<T>(Func<T> action, DispatchPriority priority = DispatchPriority.Lowest, CancellationToken cancellationToken = default)
     {
-        var tcs = new TaskCompletionSource<object>();
-        Dispatcher.Post(() =>
-        {
-            try
-            {
-                action();
-                tcs.SetResult(null);
-            }
-            catch (Exception e)
-            {
-                tcs.SetException(e);
-            }
-        });
-        return tcs.Task;
+        IDispatcher dispatcher = Dispatcher;
+        return (dispatcher.IsCurrent ? SynchronousDispatcher.Instance : dispatcher).InvokeAsync(action, priority, cancellationToken);
+    }
+
+    /// <summary>현재 UI이면 즉시 시작하고, 아니면 게시한 뒤 내부 Task 완료까지 기다립니다.</summary>
+    public static Task RunAsync(Func<Task> action, DispatchPriority priority = DispatchPriority.Lowest, CancellationToken cancellationToken = default)
+    {
+        IDispatcher dispatcher = Dispatcher;
+        return (dispatcher.IsCurrent ? SynchronousDispatcher.Instance : dispatcher).InvokeAsync(action, priority, cancellationToken);
+    }
+
+    /// <summary>현재 UI이면 즉시 시작하고, 아니면 게시한 뒤 내부 Task의 결과를 기다립니다.</summary>
+    public static Task<T> RunAsync<T>(Func<Task<T>> action, DispatchPriority priority = DispatchPriority.Lowest, CancellationToken cancellationToken = default)
+    {
+        IDispatcher dispatcher = Dispatcher;
+        return (dispatcher.IsCurrent ? SynchronousDispatcher.Instance : dispatcher).InvokeAsync(action, priority, cancellationToken);
     }
 }
