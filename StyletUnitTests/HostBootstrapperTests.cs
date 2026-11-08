@@ -1,3 +1,4 @@
+using CommunityToolkit.Mvvm.Messaging;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
@@ -79,12 +80,24 @@ public class HostBootstrapperTests
 
         Assert.IsInstanceOf<WindowManager>(services.GetRequiredService<IWindowManager>());
         Assert.AreSame(services.GetRequiredService<ViewManager>(), services.GetRequiredService<IViewManager>());
-        Assert.IsInstanceOf<EventAggregator>(services.GetRequiredService<IEventAggregator>());
+        Assert.AreSame(WeakReferenceMessenger.Default, services.GetRequiredService<IMessenger>());
         Assert.AreEqual("configured", services.GetRequiredService<IConfiguration>()["Example"]);
         Assert.AreEqual("present", services.GetRequiredService<IConfiguration>()["TestArgument"]);
         Assert.NotNull(services.GetRequiredService<ILogger<RootViewModel>>());
         Assert.AreSame(bootstrapper.LaunchedRoot, bootstrapper.GetInstance(typeof(RootViewModel)));
         Assert.IsInstanceOf<MessageBoxView>(bootstrapper.GetInstance(typeof(MessageBoxView)));
+    }
+
+    [Test]
+    public async Task ExplicitMessengerRegistrationIsPreserved()
+    {
+        var messenger = new WeakReferenceMessenger();
+        await using var bootstrapper = new TestBootstrapper<RootViewModel>
+        {
+            Register = services => services.AddSingleton<IMessenger>(messenger),
+        };
+        await bootstrapper.StartAsync(Array.Empty<string>());
+        Assert.That(bootstrapper.Services.GetRequiredService<IMessenger>(), Is.SameAs(messenger));
     }
 
     [Test]

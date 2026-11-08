@@ -1,19 +1,14 @@
 ﻿using CommunityToolkit.Mvvm.Input;
-using System;
+using CommunityToolkit.Mvvm.Messaging;
 
 namespace Stylet.Samples.DesignMode;
 
 public partial class UsingViewModelLocatorViewModel : Screen
 {
-#pragma warning disable IDE0052 // Remove unread private members
-    private readonly IEventAggregator eventAggregator;
-#pragma warning restore IDE0052 // Remove unread private members
-
     public string TextBoxText { get; set; }
 
-    public UsingViewModelLocatorViewModel(IEventAggregator eventAggregator)
+    public UsingViewModelLocatorViewModel(IMessenger messenger) : base(null, messenger)
     {
-        this.eventAggregator = eventAggregator;
     }
 
     public bool CanDoSomething => false;

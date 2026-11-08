@@ -1,3 +1,4 @@
+using CommunityToolkit.Mvvm.Messaging;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Hosting;
@@ -63,7 +64,7 @@ public static class StyletHostingExtensions
         services.TryAddSingleton<IViewManager>(sp => sp.GetRequiredService<ViewManager>());
         services.TryAddSingleton(windowConfig);
         services.TryAddSingleton<IWindowManager, WindowManager>();
-        services.TryAddSingleton<IEventAggregator, EventAggregator>();
+        services.TryAddSingleton<IMessenger>(WeakReferenceMessenger.Default);
         services.TryAddTransient<IMessageBoxViewModel, MessageBoxViewModel>();
         services.TryAddSingleton<Func<IMessageBoxViewModel>>(sp => () => sp.GetRequiredService<IMessageBoxViewModel>());
     }

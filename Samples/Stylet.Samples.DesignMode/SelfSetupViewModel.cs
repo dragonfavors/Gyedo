@@ -1,14 +1,10 @@
 ﻿using CommunityToolkit.Mvvm.Input;
-using System;
+using CommunityToolkit.Mvvm.Messaging;
 
 namespace Stylet.Samples.DesignMode;
 
 public partial class SelfSetupViewModel : Screen
 {
-#pragma warning disable IDE0052 // Remove unread private members
-    private readonly IEventAggregator eventAggregator;
-#pragma warning restore IDE0052 // Remove unread private members
-
     public string TextBoxText { get; set; }
 
     /// <summary>
@@ -22,9 +18,8 @@ public partial class SelfSetupViewModel : Screen
     /// <summary>
     /// 디자이너에서는 호출하지 않으며, 런타임에 생성자 주입으로 사용합니다.
     /// </summary>
-    public SelfSetupViewModel(IEventAggregator eventAggregator)
+    public SelfSetupViewModel(IMessenger messenger) : base(null, messenger)
     {
-        this.eventAggregator = eventAggregator;
     }
 
     public bool CanDoSomething => false;

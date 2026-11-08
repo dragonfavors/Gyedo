@@ -1,16 +1,16 @@
 ﻿using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
-using Stylet.Samples.RedditBrowser.Events;
+using CommunityToolkit.Mvvm.Messaging;
+using Stylet.Samples.RedditBrowser.Messages;
 using Stylet.Samples.RedditBrowser.RedditApi;
 using System;
 using System.Collections.Generic;
+using System.Threading.Tasks;
 
 namespace Stylet.Samples.RedditBrowser.Pages;
 
 public partial class TaskbarViewModel : Screen
 {
-    private readonly IEventAggregator events;
-
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(CanOpen))]
     [NotifyCanExecuteChangedFor(nameof(OpenCommand))]
@@ -20,17 +20,17 @@ public partial class TaskbarViewModel : Screen
     [ObservableProperty]
     private SortMode selectedSortMode;
 
-    public TaskbarViewModel(IEventAggregator events)
+    public TaskbarViewModel()
     {
-        this.events = events;
         this.SortModes = SortMode.AllModes;
         this.SelectedSortMode = SortMode.Hot;
     }
 
     public bool CanOpen => !string.IsNullOrWhiteSpace(this.Subreddit);
     [RelayCommand(CanExecute = nameof(CanOpen))]
-    public void Open()
+    public async Task OpenAsync()
     {
-        this.events.Publish(new OpenSubredditEvent() { Subreddit = this.Subreddit, SortMode = this.SelectedSortMode });
+        var request = new OpenSubredditRequest(this.Subreddit, this.SelectedSortMode);
+        await this.AlwaysMessenger.Send(request).GetResponsesAsync();
     }
 }

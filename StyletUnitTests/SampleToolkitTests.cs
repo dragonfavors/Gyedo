@@ -35,7 +35,7 @@ public class SampleToolkitTests
     [Test]
     public void SubredditInputUpdatesOpenButtonAndDependentProperty()
     {
-        var model = new TaskbarViewModel(Mock.Of<IEventAggregator>());
+        var model = new TaskbarViewModel();
         var properties = new List<string>();
         int commandChanges = 0;
         model.PropertyChanged += (_, e) => properties.Add(e.PropertyName);

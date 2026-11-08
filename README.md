@@ -66,7 +66,7 @@ WPF 프로젝트가 코어를 참조합니다. 코어에는 UI 프레임워크�
 | View 탐색·생성·연결 | `ViewManager`, `View.Model` 사용 | 유지 |
 | 창·대화상자 관리 | `WindowManager` 사용 | 유지 |
 | 속성 알림 | 자체 `PropertyChangedBase`, `SetAndNotify` 사용 | Toolkit의 `ObservableObject`, `SetProperty`, `[ObservableProperty]` 사용 |
-| 검증·메시징 | Stylet 자체 구현 사용 | 기존 검증·EventAggregator 유지, ObservableRecipient 메시지 구독 연동 |
+| 검증·메시징 | Stylet 자체 구현 사용 | IModelValidator 검증 유지, 메시징은 Toolkit IMessenger로 통일 |
 | DI | 자체 StyletIoC 제공 | StyletIoC 제거, Generic Host의 Microsoft DI 사용 |
 | 앱 시작·종료 | Bootstrapper 중심의 동기 처리 | Hosted Service 시작·종료와 호스트 폐기를 비동기로 대기 |
 | 이전 버전 호환 API | 폐기 예정 별칭과 동기 종료 확인 API 포함 | 제거하고 현행 API로 통일 |
@@ -137,6 +137,12 @@ this.AlwaysMessenger.Send(new RefreshRequested()); // 생성되어 살아 있는
 `LongMessenger`와 `AlwaysMessenger`는 모든 Screen이 공유하는 별도의 약한 참조 메신저입니다. 메신저 때문에 VM이 가비지 수집되지 못하는 일은 없지만, 닫힌 VM의 참조를 앱이 계속 보관하면 `AlwaysMessenger` 수신도 계속됩니다.
 
 활성 상태용 `Messenger`의 기본 전달자는 `WeakReferenceMessenger.Default`입니다. 이 전달자를 분리하려면 Screen을 직접 상속한 VM 생성자에서 `base(validator, messenger)`를 호출합니다. 이 인자는 `LongMessenger`·`AlwaysMessenger`에는 영향을 주지 않습니다. `Screen.IsActive`는 읽기 전용으로 제공하므로 상태 변경에는 `ActivateAsync`·`DeactivateAsync`를 사용하세요. Toolkit의 동기 `OnActivated`·`OnDeactivated`는 구독 연결용으로 고정하고, 앱은 비동기 훅을 재정의합니다.
+
+호스트는 `IMessenger`를 Singleton으로 등록하며 기본값은 `WeakReferenceMessenger.Default`입니다. 앱이 먼저 등록한 `IMessenger`는 유지합니다. 등록만 바꿔서 모든 VM의 메신저가 바뀌는 것은 아니므로, 사용자 지정 전달자는 VM에 주입해 기반 생성자로 넘깁니다.
+
+`IEventAggregator`, `IHandle<T>`와 발행 확장은 제거했습니다. 수신은 `IRecipient<T>.Receive`, 발신은 `IMessenger.Send`를 사용합니다. 기존 생성자 구독은 `AlwaysMessenger`, 최초 활성화~닫기 구독은 `LongMessenger`, 활성 상태 구독은 `Messenger`에 대응합니다. 기반 타입으로의 자동 전달과 UI 스레드 전환은 자동 제공하지 않으므로 메시지 타입·토큰 채널·Dispatcher를 명시합니다.
+
+일반 `Send`는 비동기 수신 작업의 완료까지 기다리지 않습니다. 완료가 필요하면 Toolkit의 요청 메시지로 Task를 응답합니다. [RedditBrowser 샘플](Samples/Stylet.Samples.RedditBrowser/Pages/TaskbarViewModel.cs)은 `AsyncCollectionRequestMessage<bool>`과 `GetResponsesAsync()`로 모든 Shell의 탐색 완료를 기다립니다.
 
 ### ViewModel에서 구현할 부분
 
