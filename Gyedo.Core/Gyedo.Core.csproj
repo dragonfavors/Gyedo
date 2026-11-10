@@ -9,8 +9,8 @@
     <PackageReadmeFile>README.md</PackageReadmeFile>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
     <RepositoryType>git</RepositoryType>
-    <RepositoryUrl>https://github.com/dragonfavors/Stylet.MvvmToolkit</RepositoryUrl>
-    <PackageProjectUrl>https://github.com/dragonfavors/Stylet.MvvmToolkit</PackageProjectUrl>
+    <RepositoryUrl>https://github.com/dragonfavors/Gyedo</RepositoryUrl>
+    <PackageProjectUrl>https://github.com/dragonfavors/Gyedo</PackageProjectUrl>
     <Authors>Antony Male;dragonfavors</Authors>
     <Copyright>Copyright © 2014 Antony Male; © 2026 dragonfavors</Copyright>
     <Description>UI 프레임워크와 독립적인 Gyedo 화면 수명주기·탐색·검증·메시징 코어</Description>

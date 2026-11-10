@@ -14,10 +14,10 @@
     <PackageTags>dotnet-new;templates;WPF;MVVM;ViewModel;Screen;Conductor;ViewModel-First;Model-View-ViewModel;UI</PackageTags>
     <Copyright>Copyright © 2019 Antony Male; © 2026 dragonfavors</Copyright>
     <PackageReadmeFile>README.md</PackageReadmeFile>
-    <PackageProjectUrl>https://github.com/dragonfavors/Stylet.MvvmToolkit</PackageProjectUrl>
+    <PackageProjectUrl>https://github.com/dragonfavors/Gyedo</PackageProjectUrl>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
     <RepositoryType>git</RepositoryType>
-    <RepositoryUrl>https://github.com/dragonfavors/Stylet.MvvmToolkit</RepositoryUrl>
+    <RepositoryUrl>https://github.com/dragonfavors/Gyedo</RepositoryUrl>
     <Authors>Antony Male;dragonfavors</Authors>
     <Description>.NET 10용 Gyedo WPF 애플리케이션 템플릿</Description>
   </PropertyGroup>

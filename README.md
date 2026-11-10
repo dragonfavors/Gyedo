@@ -8,13 +8,13 @@
 
 ## 사용 문서
 
-[한국어 사용 가이드와 전체 목차](https://github.com/dragonfavors/Stylet.MvvmToolkit/wiki)에서 현재 구현에 맞는 설명과 예제를 확인할 수 있습니다.
+[한국어 사용 가이드와 전체 목차](https://github.com/dragonfavors/Gyedo/wiki)에서 현재 구현에 맞는 설명과 예제를 확인할 수 있습니다.
 
-- [빠른 시작](https://github.com/dragonfavors/Stylet.MvvmToolkit/wiki/Quick-Start) · [커스텀 Main](https://github.com/dragonfavors/Stylet.MvvmToolkit/wiki/Custom-Main) · [호스트와 DI](https://github.com/dragonfavors/Stylet.MvvmToolkit/wiki/Hosting-and-DI)
-- [화면 생명주기](https://github.com/dragonfavors/Stylet.MvvmToolkit/wiki/Screens) · [화면 전환과 탭](https://github.com/dragonfavors/Stylet.MvvmToolkit/wiki/Conductors) · [View 연결](https://github.com/dragonfavors/Stylet.MvvmToolkit/wiki/ViewManager)
-- [창·대화상자](https://github.com/dragonfavors/Stylet.MvvmToolkit/wiki/Windows-and-Dialogs) · [Toolkit](https://github.com/dragonfavors/Stylet.MvvmToolkit/wiki/MVVM-Toolkit) · [입력 검증](https://github.com/dragonfavors/Stylet.MvvmToolkit/wiki/Validation)
-- [메시징](https://github.com/dragonfavors/Stylet.MvvmToolkit/wiki/Messaging) · [스레드·컬렉션](https://github.com/dragonfavors/Stylet.MvvmToolkit/wiki/Threading-and-Collections) · [기타 도구](https://github.com/dragonfavors/Stylet.MvvmToolkit/wiki/Utilities)
-- [원본에서 이전](https://github.com/dragonfavors/Stylet.MvvmToolkit/wiki/Migration) · [문제 해결·샘플](https://github.com/dragonfavors/Stylet.MvvmToolkit/wiki/Troubleshooting)
+- [빠른 시작](https://github.com/dragonfavors/Gyedo/wiki/Quick-Start) · [커스텀 Main](https://github.com/dragonfavors/Gyedo/wiki/Custom-Main) · [호스트와 DI](https://github.com/dragonfavors/Gyedo/wiki/Hosting-and-DI)
+- [화면 생명주기](https://github.com/dragonfavors/Gyedo/wiki/Screens) · [화면 전환과 탭](https://github.com/dragonfavors/Gyedo/wiki/Conductors) · [View 연결](https://github.com/dragonfavors/Gyedo/wiki/ViewManager)
+- [창·대화상자](https://github.com/dragonfavors/Gyedo/wiki/Windows-and-Dialogs) · [Toolkit](https://github.com/dragonfavors/Gyedo/wiki/MVVM-Toolkit) · [입력 검증](https://github.com/dragonfavors/Gyedo/wiki/Validation)
+- [메시징](https://github.com/dragonfavors/Gyedo/wiki/Messaging) · [스레드·컬렉션](https://github.com/dragonfavors/Gyedo/wiki/Threading-and-Collections) · [기타 도구](https://github.com/dragonfavors/Gyedo/wiki/Utilities)
+- [원본에서 이전](https://github.com/dragonfavors/Gyedo/wiki/Migration) · [문제 해결·샘플](https://github.com/dragonfavors/Gyedo/wiki/Troubleshooting)
 
 ## 원본 Stylet
 
@@ -236,7 +236,7 @@ string title = await Execute.Dispatcher.InvokeAsync(
 - 토큰은 실행 전 게시를 취소합니다. 시작한 작업은 강제 중단하지 않으므로 예제처럼 내부 작업에도 토큰을 전달합니다. 우선순위는 최초 게시에 적용하며 await 이후의 모든 실행 순서를 보장하지 않습니다.
 - Dispatcher 종료로 실행되지 못한 대기 작업은 취소된 Task가 됩니다. 이미 시작한 UI 작업은 Dispatcher를 종료하기 전에 정리해야 합니다.
 
-WPF 연결 전의 `SynchronousDispatcher`는 현재 스레드에서 즉시 시작하는 테스트·비 UI용 구현입니다. 우선순위 정렬은 하지 않습니다. 컬렉션과 속성 알림의 스레드 정책은 [위키](https://github.com/dragonfavors/Stylet.MvvmToolkit/wiki/Threading-and-Collections)를 참고하세요.
+WPF 연결 전의 `SynchronousDispatcher`는 현재 스레드에서 즉시 시작하는 테스트·비 UI용 구현입니다. 우선순위 정렬은 하지 않습니다. 컬렉션과 속성 알림의 스레드 정책은 [위키](https://github.com/dragonfavors/Gyedo/wiki/Threading-and-Collections)를 참고하세요.
 
 ## 템플릿 없이 WPF 앱 설정
 
