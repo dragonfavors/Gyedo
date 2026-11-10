@@ -1,0 +1,49 @@
+﻿<Window x:Class="Gyedo.IntegrationTests.ShellView"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="ShellView" Height="500" Width="500">
+    <DockPanel LastChildFill="False">
+        <GroupBox DockPanel.Dock="Top" Header="ShowDialog and DialogResult" Padding="10">
+            <StackPanel Orientation="Horizontal">
+                <Button Command="{Binding ShowDialogAndDialogResultCommand}">Show Dialog</Button>
+                <TextBlock Margin="50,0,0,0">Result:</TextBlock>
+                <TextBlock Margin="10,0,0,0" Text="{Binding ShowDialogAndDialogResultDialogResult}"/>
+            </StackPanel>
+        </GroupBox>
+
+        <GroupBox DockPanel.Dock="Top" Header="Window Lifecycle" Padding="10">
+            <Button Command="{Binding ShowWindowLifecycleCommand}">Show Window</Button>
+        </GroupBox>
+
+        <GroupBox DockPanel.Dock="Top" Header="OnUnhandledException" Padding="10">
+            <DockPanel>
+                <TextBlock DockPanel.Dock="Top" TextWrapping="WrapWithOverflow">Verify that pressing the button below shows a dialog, containing the message 'Unhandled Exception: Hello'.</TextBlock>
+                <Button DockPanel.Dock="Top" Command="{Binding ThrowExceptionCommand}">Throw Exception</Button>
+            </DockPanel>
+        </GroupBox>
+
+        <GroupBox DockPanel.Dock="Top" Header="Dispatcher" Padding="10">
+            <DockPanel>
+                <TextBlock DockPanel.Dock="Top" TextWrapping="WrapWithOverflow">Verify that pressing the button shows a MessageBox saying 'Success'.</TextBlock>
+                <Button DockPanel.Dock="Top" Command="{Binding TestDispatcherCommand}">Test Dispatcher</Button>
+            </DockPanel>
+        </GroupBox>
+        <GroupBox DockPanel.Dock="Top" Header="Command bindings" Padding="10">
+            <DockPanel>
+                <TextBlock DockPanel.Dock="Top" TextWrapping="WrapWithOverflow">
+                Verify that pressing ctrl+s in the text box creates a dialog. Also verify that right-clicking in the text box and clicking the menu item shows a dialog.
+                </TextBlock>
+                <TextBox DockPanel.Dock="Top">
+                    <TextBox.InputBindings>
+                        <KeyBinding Key="S" Modifiers="Ctrl" Command="{Binding ShowCommandExecutedCommand}"/>
+                    </TextBox.InputBindings>
+                    <TextBox.ContextMenu>
+                        <ContextMenu DataContext="{Binding PlacementTarget.DataContext, RelativeSource={RelativeSource Self}}">
+                            <MenuItem Header="Click Me" Command="{Binding ShowCommandExecutedCommand}"/>
+                        </ContextMenu>
+                    </TextBox.ContextMenu>
+                </TextBox>
+            </DockPanel>
+        </GroupBox>
+    </DockPanel>
+</Window>

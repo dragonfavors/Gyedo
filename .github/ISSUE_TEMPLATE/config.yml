@@ -1,5 +1,5 @@
 blank_issues_enabled: false
 contact_links:
-  - name: Open a Discussion
-    url: https://github.com/canton7/stylet/discussions/new
-    about: If you've got a question, suggestion, or something you're not sure about, please open a discussion.
+  - name: 질문과 제안
+    url: https://github.com/dragonfavors/Stylet.MvvmToolkit/issues
+    about: Gyedo에 관한 질문과 제안은 이 저장소의 이슈로 남겨 주세요.

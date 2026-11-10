@@ -1,6 +1,10 @@
-# ![프로젝트 아이콘](StyletIcon.png) Stylet.MvvmToolkit
+# 계도 · Gyedo
 
-[Stylet](https://github.com/canton7/Stylet)을 기반으로, 화면 관리 기능을 유지하면서 구조와 사용 방식을 단순화하는 포크입니다.
+**Gyedo는 [Stylet](https://github.com/canton7/Stylet)에서 파생된 독립 MVVM 라이브러리입니다.** Stylet의 화면 관리 설계를 바탕으로 CommunityToolkit.Mvvm을 통합하고, 기능을 줄여 비동기 화면 수명주기에 집중합니다.
+
+계도(鷄刀)는 “닭 잡는 데 소 잡는 칼은 필요 없다”는 생각에서 만든 프로젝트 이름입니다. 원본 Stylet과 API·패키지 호환성을 제공하지 않습니다.
+
+프로젝트의 이전 이름은 `Stylet.MvvmToolkit`입니다. 패키지는 `Gyedo.Core`, `Gyedo.Wpf`, `Gyedo.Templates`, 코드 네임스페이스는 `Gyedo`를 사용합니다. 호스트 API는 `ConfigureGyedo`·`StartGyedoAsync`·`ShutdownGyedoAsync`, 템플릿 명령은 `dotnet new gyedo`입니다. XAML 네임스페이스는 `https://github.com/dragonfavors/Gyedo`로 변경했으며 이전 이름의 호환 별칭은 제공하지 않습니다.
 
 ## 사용 문서
 
@@ -43,12 +47,12 @@ Stylet은 Antony Male이 만든 WPF용 ViewModel 중심 MVVM 프레임워크입�
 
 | 프로젝트 | 대상 | 역할 |
 |---|---|---|
-| [Stylet.Core](Stylet.Core/Stylet.Core.csproj) | `net10.0` | Toolkit 기반 속성 알림, 화면 수명주기·탐색, 검증, 컬렉션, 메시징, 로깅, 디스패처 계약 |
-| [Stylet — WPF 구현](Stylet/Stylet.csproj) | `net10.0-windows` | Generic Host·Microsoft DI 초기화, View 연결, 창·메시지 박스, WPF Dispatcher·디자인 모드 |
-| [공통 테스트](Stylet.Core.Tests/Stylet.Core.Tests.csproj) | `net10.0` | WPF 없이 공통 동작 검증 |
-| [WPF 테스트](StyletUnitTests/StyletUnitTests.csproj) | `net10.0-windows` | WPF 연결과 창 동작 검증 |
+| [Gyedo.Core](Gyedo.Core/Gyedo.Core.csproj) | `net10.0` | Toolkit 기반 속성 알림, 화면 수명주기·탐색, 검증, 컬렉션, 메시징, 로깅, 디스패처 계약 |
+| [Gyedo.Wpf — WPF 구현](Gyedo.Wpf/Gyedo.Wpf.csproj) | `net10.0-windows` | Generic Host·Microsoft DI 초기화, View 연결, 창·메시지 박스, WPF Dispatcher·디자인 모드 |
+| [공통 테스트](Gyedo.Core.Tests/Gyedo.Core.Tests.csproj) | `net10.0` | WPF 없이 공통 동작 검증 |
+| [WPF 테스트](Gyedo.Wpf.Tests/Gyedo.Wpf.Tests.csproj) | `net10.0-windows` | WPF 연결과 창 동작 검증 |
 
-WPF 프로젝트가 코어를 참조합니다. 코어에는 UI 프레임워크나 DI 컨테이너 구현이 없으며, 공통 타입의 네임스페이스는 `Stylet`을 사용합니다. WPF 패키지·어셈블리 이름도 기존 `Stylet`을 유지합니다.
+WPF 프로젝트가 코어를 참조합니다. 코어에는 UI 프레임워크나 DI 컨테이너 구현이 없으며, 공통 타입과 WPF 공개 API는 `Gyedo` 네임스페이스를 사용합니다. 패키지·어셈블리는 `Gyedo.Core`와 `Gyedo.Wpf`로 구분합니다.
 
 `Screen`은 실제 View를 보관하지 않습니다. WPF `ViewManager`가 화면의 View를 연결·재사용하고, `OnClosedAsync()`를 호출하기 전에 `ViewReleaseRequested` 알림으로 연결을 해제합니다. 일반 ViewModel은 기존처럼 여러 View에 표시할 수 있습니다. View 로딩은 UI 타입이 없는 `IViewLifecycleAware.ViewLoadedAsync()`를 통해 `OnViewLoadedAsync()` 훅에 전달하며, 화면 활성화와 별개입니다.
 
@@ -142,7 +146,7 @@ this.AlwaysMessenger.Send(new RefreshRequested()); // 생성되어 살아 있는
 
 `IEventAggregator`, `IHandle<T>`와 발행 확장은 제거했습니다. 수신은 `IRecipient<T>.Receive`, 발신은 `IMessenger.Send`를 사용합니다. 기존 생성자 구독은 `AlwaysMessenger`, 최초 활성화~닫기 구독은 `LongMessenger`, 활성 상태 구독은 `Messenger`에 대응합니다. 기반 타입으로의 자동 전달과 UI 스레드 전환은 자동 제공하지 않으므로 메시지 타입·토큰 채널·Dispatcher를 명시합니다.
 
-일반 `Send`는 비동기 수신 작업의 완료까지 기다리지 않습니다. 완료가 필요하면 Toolkit의 요청 메시지로 Task를 응답합니다. [RedditBrowser 샘플](Samples/Stylet.Samples.RedditBrowser/Pages/TaskbarViewModel.cs)은 `AsyncCollectionRequestMessage<bool>`과 `GetResponsesAsync()`로 모든 Shell의 탐색 완료를 기다립니다.
+일반 `Send`는 비동기 수신 작업의 완료까지 기다리지 않습니다. 완료가 필요하면 Toolkit의 요청 메시지로 Task를 응답합니다. [RedditBrowser 샘플](Samples/Gyedo.Samples.RedditBrowser/Pages/TaskbarViewModel.cs)은 `AsyncCollectionRequestMessage<bool>`과 `GetResponsesAsync()`로 모든 Shell의 탐색 완료를 기다립니다.
 
 ### ViewModel에서 구현할 부분
 
@@ -185,7 +189,7 @@ protected override Task OnClosedAsync() => this.service.FlushAsync();
 
 `AllActive`는 `ActivateItemAsync`로 자식을 추가합니다. 기본 탭 스타일은 `ActiveItem`을 읽고 선택 변경을 비동기 탐색으로 연결합니다. 탐색 실패 시 이전 선택을 복구합니다.
 
-WPF는 닫기 이벤트를 잠시 취소하고 VM의 종료가 끝난 뒤 실제 창을 닫습니다. 창 이벤트에서 발생한 오류는 로그에 남기며, 명시적으로 호출한 비동기 API는 호출자에게 오류를 전달합니다. 정상 앱 종료는 `ShutdownStyletAsync()` 또는 `ShutdownAsync()`로 창 정리 → 호스트 종료·폐기 → WPF 종료 순서를 기다립니다. 강제 프로세스 종료에는 이 완료를 보장할 수 없습니다.
+WPF는 닫기 이벤트를 잠시 취소하고 VM의 종료가 끝난 뒤 실제 창을 닫습니다. 창 이벤트에서 발생한 오류는 로그에 남기며, 명시적으로 호출한 비동기 API는 호출자에게 오류를 전달합니다. 정상 앱 종료는 `ShutdownGyedoAsync()` 또는 `ShutdownAsync()`로 창 정리 → 호스트 종료·폐기 → WPF 종료 순서를 기다립니다. 강제 프로세스 종료에는 이 완료를 보장할 수 없습니다.
 
 </details>
 
@@ -243,7 +247,7 @@ WPF 연결 전의 `SynchronousDispatcher`는 현재 스레드에서 즉시 시�
 앱 프로젝트 폴더에서 실행합니다. `<저장소 경로>`는 실제 복제한 위치로 바꿉니다.
 
 ```powershell
-dotnet add reference "<저장소 경로>\Stylet\Stylet.csproj"
+dotnet add reference "<저장소 경로>\Gyedo.Wpf\Gyedo.Wpf.csproj"
 ```
 
 ### 2. 첫 화면 준비
@@ -255,7 +259,7 @@ dotnet add reference "<저장소 경로>\Stylet\Stylet.csproj"
 ```csharp
 namespace MyApp;
 
-public class ShellViewModel : Stylet.Screen
+public class ShellViewModel : Gyedo.Screen
 {
 }
 ```
@@ -269,7 +273,7 @@ public class ShellViewModel : Stylet.Screen
 ```csharp
 namespace MyApp;
 
-public class Bootstrapper : Stylet.Bootstrapper<ShellViewModel>
+public class Bootstrapper : Gyedo.Bootstrapper<ShellViewModel>
 {
 }
 ```
@@ -284,14 +288,14 @@ public class Bootstrapper : Stylet.Bootstrapper<ShellViewModel>
 <Application x:Class="MyApp.App"
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-             xmlns:s="https://github.com/canton7/Stylet"
+             xmlns:g="https://github.com/dragonfavors/Gyedo"
              xmlns:local="clr-namespace:MyApp">
     <Application.Resources>
-        <s:ApplicationLoader>
-            <s:ApplicationLoader.Bootstrapper>
+        <g:ApplicationLoader>
+            <g:ApplicationLoader.Bootstrapper>
                 <local:Bootstrapper />
-            </s:ApplicationLoader.Bootstrapper>
-        </s:ApplicationLoader>
+            </g:ApplicationLoader.Bootstrapper>
+        </g:ApplicationLoader>
     </Application.Resources>
 </Application>
 ```
@@ -300,7 +304,7 @@ public class Bootstrapper : Stylet.Bootstrapper<ShellViewModel>
 
 ## Main부터 직접 구성하기
 
-업데이트 확인, 단일 인스턴스 검사, 네이티브 라이브러리 설정 등을 앱이 직접 제어하려면 [CustomStartup 샘플](Samples/Stylet.Samples.CustomStartup/App.xaml.cs)을 참고하세요. 일반 `Application` 클래스에서 호스트를 만들며, 별도 Bootstrapper 클래스나 앱 전용 인터페이스는 필요하지 않습니다.
+업데이트 확인, 단일 인스턴스 검사, 네이티브 라이브러리 설정 등을 앱이 직접 제어하려면 [CustomStartup 샘플](Samples/Gyedo.Samples.CustomStartup/App.xaml.cs)을 참고하세요. 일반 `Application` 클래스에서 호스트를 만들며, 별도 Bootstrapper 클래스나 앱 전용 인터페이스는 필요하지 않습니다.
 
 프로젝트에서 직접 작성한 `Main`을 진입점으로 지정하고 `App.xaml`을 `Page`로 변경합니다. 네임스페이스는 앱에 맞게 바꿉니다.
 
@@ -321,7 +325,7 @@ var app = new App();
 app.InitializeComponent();
 app.Host = Microsoft.Extensions.Hosting.Host.CreateDefaultBuilder(args)
     .UseContentRoot(AppContext.BaseDirectory)
-    .ConfigureStylet(app, views => views.ViewModelNameSuffix = "VM")
+    .ConfigureGyedo(app, views => views.ViewModelNameSuffix = "VM")
     .ConfigureServices((_, services) => services.AddSingleton<MainVM>())
     .Build();
 return app.Run();
@@ -330,7 +334,7 @@ return app.Run();
 `App`에는 `IHost Host { get; private set; }` 속성을 두고, `OnStartup`에서 시작을 기다린 뒤 첫 화면을 직접 선택합니다.
 
 ```csharp
-if (!await this.StartStyletAsync(this.Host))
+if (!await this.StartGyedoAsync(this.Host))
     return;
 
 // 폰트·테마 등 첫 화면 표시 전의 UI 초기화
@@ -339,10 +343,10 @@ await this.Host.Services.GetRequiredService<IWindowManager>()
 ```
 
 - 위 이름 설정은 `MainVM → MainView`를 뜻합니다. 기본값은 `ViewModel → View`이며, `ViewNameSuffix`와 `ViewAssemblies`도 설정할 수 있습니다.
-- `Host.CreateApplicationBuilder(args)`에도 같은 `ConfigureStylet(app, ...)`를 사용할 수 있습니다.
-- 이 경로의 `App.xaml`에는 `ApplicationLoader`와 `StartupUri`를 두지 않습니다. 리소스와 Dispatcher는 `StartStyletAsync`에서 연결합니다.
+- `Host.CreateApplicationBuilder(args)`에도 같은 `ConfigureGyedo(app, ...)`를 사용할 수 있습니다.
+- 이 경로의 `App.xaml`에는 `ApplicationLoader`와 `StartupUri`를 두지 않습니다. 리소스와 Dispatcher는 `StartGyedoAsync`에서 연결합니다.
 - 시작 중 호스트 종료 요청이 오면 `false`가 반환되므로 첫 화면을 표시하지 않습니다. 시작 예외 처리는 샘플의 `OnStartup`을 참고하세요.
-- 연결 이후 호스트의 시작·정상 종료·폐기는 Stylet이 담당합니다. 직접 `Host.StartAsync`나 `Dispose`를 중복 호출하지 않습니다. 앱에서 종료할 때는 `ShutdownStyletAsync()` 또는 `IHostApplicationLifetime.StopApplication()`을 사용합니다.
+- 연결 이후 호스트의 시작·정상 종료·폐기는 Gyedo가 담당합니다. 직접 `Host.StartAsync`나 `Dispose`를 중복 호출하지 않습니다. 앱에서 종료할 때는 `ShutdownGyedoAsync()` 또는 `IHostApplicationLifetime.StopApplication()`을 사용합니다.
 
 서비스 등록은 기존 Microsoft DI의 명시적 등록 방식을 사용합니다. 사전 작업과 앱별 초기화 순서는 `Main`과 `OnStartup`에서 자유롭게 구성합니다.
 
@@ -351,10 +355,10 @@ await this.Host.Services.GetRequiredService<IWindowManager>()
 Windows에서 다음 명령으로 실제 WPF UI 흐름을 검증합니다.
 
 ```powershell
-dotnet test StyletUnitTests/StyletUnitTests.csproj --filter "TestCategory=WpfIntegration"
+dotnet test Gyedo.Wpf.Tests/Gyedo.Wpf.Tests.csproj --filter "TestCategory=WpfIntegration"
 ```
 
-[WpfUiFlowTests](StyletUnitTests/WpfUiFlowTests.cs)는 실제 ViewManager·WindowManager·기본 탭 스타일·Dispatcher를 사용합니다. 창은 화면 밖에 표시하고, 버튼은 UI Automation으로 호출하며 탭 선택은 WPF 컨트롤에서 변경합니다.
+[WpfUiFlowTests](Gyedo.Wpf.Tests/WpfUiFlowTests.cs)는 실제 ViewManager·WindowManager·기본 탭 스타일·Dispatcher를 사용합니다. 창은 화면 밖에 표시하고, 버튼은 UI Automation으로 호출하며 탭 선택은 WPF 컨트롤에서 변경합니다.
 
 - 창 표시·DataContext·제목·텍스트·명령 바인딩
 - 모달 대화상자 확인·취소와 기본 메시지 박스 버튼 결과
@@ -362,13 +366,13 @@ dotnet test StyletUnitTests/StyletUnitTests.csproj --filter "TestCategory=WpfInt
 - 로딩 중 취소·정리 대기, 종료 거절 후 재시도
 - 세 메신저의 수신 기간과 우선순위별 UI 갱신 순서
 
-UI 이벤트·Task 완료를 기다리며, 종료 시 창과 전역 Dispatcher 설정을 정리합니다. 개별 Dispatcher·코어 테스트와 함께 전체 검증하려면 `dotnet test Stylet.sln`을 실행합니다.
+UI 이벤트·Task 완료를 기다리며, 종료 시 창과 전역 Dispatcher 설정을 정리합니다. 개별 Dispatcher·코어 테스트와 함께 전체 검증하려면 `dotnet test Gyedo.sln`을 실행합니다.
 
 ## 기존 코드 사용 시 차이
 
 모든 프로젝트는 .NET 10을 대상으로 합니다. 공통 코어와 공통 테스트는 .NET 10 SDK만으로 빌드·실행할 수 있으며, WPF 프로젝트·샘플·템플릿은 Windows가 필요합니다. 이전 대상 프레임워크는 지원하지 않습니다.
 
-공통 기능만 사용하는 프로젝트는 `Stylet.Core`를 참조합니다. WPF 애플리케이션은 기존 `Stylet`을 참조하면 코어가 함께 포함됩니다. 공통 타입의 어셈블리가 이동했으므로 기존 소비 프로젝트는 다시 빌드해야 합니다.
+공통 기능만 사용하는 프로젝트는 `Gyedo.Core`를 참조합니다. WPF 애플리케이션은 `Gyedo.Wpf`를 참조하면 코어가 함께 포함됩니다. 기존 소비 프로젝트는 패키지·네임스페이스·XAML 주소를 변경하고 다시 빌드해야 합니다.
 
 | 분리 전 | 분리 후 |
 |---|---|
@@ -376,7 +380,7 @@ UI 이벤트·Task 완료를 기다리며, 종료 시 창과 전역 Dispatcher �
 | `IScreen`의 WPF `IViewAware` 상속 | 분리. `IViewAware`는 WPF 커스텀 모델용 선택적 인터페이스로 유지 |
 | `Execute.InDesignMode` | WPF `DesignMode.IsEnabled` |
 | `IWindowManager`의 `IViewAware ownerViewModel` 매개변수 | 연결된 Screen 또는 WPF `IViewAware`를 객체로 받고 ViewManager에서 소유 View 조회 |
-| XAML에서 공통 타입을 직접 참조하는 `assembly=Stylet` | 해당 공통 타입은 `assembly=Stylet.Core`로 변경 |
+| XAML에서 공통 타입을 직접 참조하는 `assembly=Stylet` | 해당 공통 타입은 `assembly=Gyedo.Core`로 변경 |
 | 기본 Bootstrapper의 `ConfigureIoC`, `Container.Get<T>()` | `ConfigureServices`, `Services.GetRequiredService<T>()` |
 
 ### Generic Host와 DI
@@ -384,7 +388,7 @@ UI 이벤트·Task 완료를 기다리며, 종료 시 창과 전역 Dispatcher �
 기본 `Bootstrapper<T>`는 `HostBootstrapperBase`를 통해 Generic Host를 사용합니다. `IConfiguration`, `ILogger<T>`, `IOptions<T>`, `IHostedService`를 생성자로 주입할 수 있습니다. Host 패키지는 WPF 구현에만 추가하며, 공통 코어는 호스트에 의존하지 않습니다.
 
 ```csharp
-public class Bootstrapper : Stylet.Bootstrapper<ShellViewModel>
+public class Bootstrapper : Gyedo.Bootstrapper<ShellViewModel>
 {
     protected override void ConfigureHost(HostApplicationBuilder builder)
     {
@@ -412,7 +416,7 @@ public class Bootstrapper : Stylet.Bootstrapper<ShellViewModel>
 
 DI는 Generic Host의 기본 Microsoft DI만 제공합니다. 기존 `StyletIoC` 구현·전용 부트스트래퍼와 별도 컨테이너 예제 프로젝트를 제거했습니다. 다른 컨테이너 지원은 필요할 때 추가합니다.
 
-샘플·템플릿도 Generic Host를 사용하며, 템플릿은 이 포크에서 빌드한 `Stylet` 패키지를 참조해야 합니다. 원본 `Stylet 1.*` 패키지에는 새 호스트 API가 없습니다.
+샘플·템플릿도 Generic Host를 사용하며, 템플릿은 이 저장소에서 빌드한 `Gyedo.Wpf` 패키지를 참조해야 합니다. 원본 `Stylet 1.*` 패키지에는 새 호스트 API가 없습니다.
 
 | 제거한 StyletIoC 기능 | 이전 방법 |
 |---|---|
@@ -432,7 +436,7 @@ Action 제거는 기존 사용 코드와 호환되지 않는 변경입니다. �
 <Button Command="{Binding SaveCommand}" />
 ```
 
-`SaveCommand`는 Toolkit의 `[RelayCommand]`로 생성하거나 직접 구현할 수 있습니다. 샘플과 통합 테스트 앱의 `DelegateCommand`는 모두 생성 명령으로 교체했습니다. 기존 XAML의 명령 이름은 유지합니다. 생성 속성과 명령의 기본 연동은 [Hello 샘플](Samples/Stylet.Samples.Hello/ShellViewModel.cs)을 참고하세요.
+`SaveCommand`는 Toolkit의 `[RelayCommand]`로 생성하거나 직접 구현할 수 있습니다. 샘플과 통합 테스트 앱의 `DelegateCommand`는 모두 생성 명령으로 교체했습니다. 기존 XAML의 명령 이름은 유지합니다. 생성 속성과 명령의 기본 연동은 [Hello 샘플](Samples/Gyedo.Samples.Hello/ShellViewModel.cs)을 참고하세요.
 
 실행 조건은 `[RelayCommand(CanExecute = nameof(CanSave))]`로 지정합니다. 조건에 영향을 주는 생성 속성에는 `[NotifyCanExecuteChangedFor(nameof(SaveCommand))]`를 붙이고, 검증 결과처럼 별도로 바뀌는 상태는 `SaveCommand.NotifyCanExecuteChanged()`로 갱신합니다. `CanSave`라는 이름만으로 자동 연결되지는 않습니다.
 
@@ -450,7 +454,7 @@ RedditBrowser의 페이지 이동과 통합 테스트 앱의 디스패처 명령
 
 ```csharp
 using CommunityToolkit.Mvvm.ComponentModel;
-using Stylet;
+using Gyedo;
 
 public partial class UserViewModel : Screen
 {
@@ -461,7 +465,7 @@ public partial class UserViewModel : Screen
 
 위 코드는 변경 알림을 제공하는 `Name` 속성을 생성합니다. `Conductor`를 상속한 ViewModel에서도 사용할 수 있습니다.
 
-ModelValidation과 RedditBrowser의 Fody 의존성·설정은 제거했습니다. 해당 ViewModel은 `[ObservableProperty]`를 사용하며, 종속 속성은 `[NotifyPropertyChangedFor]`로 명시합니다. [ModelValidation 샘플](Samples/Stylet.Samples.ModelValidation/Pages/UserViewModel.cs)은 생성 속성의 자동 검증, 비밀번호 확인 재검증, 제출 버튼의 상태 갱신을 보여 줍니다. 샘플의 Toolkit 패키지 참조는 `Samples/Directory.Build.props`에서 공통으로 관리합니다.
+ModelValidation과 RedditBrowser의 Fody 의존성·설정은 제거했습니다. 해당 ViewModel은 `[ObservableProperty]`를 사용하며, 종속 속성은 `[NotifyPropertyChangedFor]`로 명시합니다. [ModelValidation 샘플](Samples/Gyedo.Samples.ModelValidation/Pages/UserViewModel.cs)은 생성 속성의 자동 검증, 비밀번호 확인 재검증, 제출 버튼의 상태 갱신을 보여 줍니다. 샘플의 Toolkit 패키지 참조는 `Samples/Directory.Build.props`에서 공통으로 관리합니다.
 
 | 제거한 API | 사용할 API |
 |---|---|

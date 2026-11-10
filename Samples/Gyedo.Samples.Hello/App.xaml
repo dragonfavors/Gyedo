@@ -1,0 +1,13 @@
+﻿<Application x:Class="Gyedo.Samples.Hello.App"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:g="https://github.com/dragonfavors/Gyedo"
+             xmlns:local="clr-namespace:Gyedo.Samples.Hello">
+    <Application.Resources>
+        <g:ApplicationLoader>
+            <g:ApplicationLoader.Bootstrapper>
+                <local:HelloBootstrapper/>
+            </g:ApplicationLoader.Bootstrapper>
+        </g:ApplicationLoader>
+    </Application.Resources>
+</Application>

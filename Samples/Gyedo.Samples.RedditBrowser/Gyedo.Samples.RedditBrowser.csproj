@@ -1,0 +1,12 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <UseWPF>true</UseWPF>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="RestEase" Version="1.5.5" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\..\Gyedo.Wpf\Gyedo.Wpf.csproj" />
+  </ItemGroup>
+</Project>

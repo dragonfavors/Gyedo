@@ -1,0 +1,17 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net10.0-windows</TargetFramework>
+    <UseWPF>true</UseWPF>
+
+    <RootNamespace>Company.GyedoApplication1</RootNamespace>
+  </PropertyGroup>
+
+  <ItemGroup Condition="'$(GyedoSourceProject)' == ''">
+    <PackageReference Include="Gyedo.Wpf" Version="0.0.0" />
+  </ItemGroup>
+  <ItemGroup Condition="'$(GyedoSourceProject)' != ''">
+    <ProjectReference Include="$(GyedoSourceProject)" />
+  </ItemGroup>
+</Project>

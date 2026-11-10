@@ -1,0 +1,13 @@
+﻿<Application x:Class="Gyedo.Samples.NavigationController.App"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:local="clr-namespace:Gyedo.Samples.NavigationController"
+             xmlns:g="https://github.com/dragonfavors/Gyedo">
+    <Application.Resources>
+        <g:ApplicationLoader>
+            <g:ApplicationLoader.Bootstrapper>
+                <local:Bootstrapper />
+            </g:ApplicationLoader.Bootstrapper>
+        </g:ApplicationLoader>
+    </Application.Resources>
+</Application>

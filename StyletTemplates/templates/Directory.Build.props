@@ -1,6 +1,0 @@
-<Project>
-  <PropertyGroup>
-    <!-- 저장소에서는 현재 소스를 검증하고, 생성된 프로젝트는 NuGet 패키지를 사용합니다. -->
-    <StyletSourceProject>$(MSBuildThisFileDirectory)..\..\Stylet\Stylet.csproj</StyletSourceProject>
-  </PropertyGroup>
-</Project>

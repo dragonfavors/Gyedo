@@ -1,8 +1,12 @@
-Stylet Changelog
+Gyedo Changelog
 ================
 
 Unreleased
 ----------
+
+ - 프로젝트 이름을 계도(Gyedo)로 변경합니다. 패키지는 Gyedo.Core, Gyedo.Wpf, Gyedo.Templates이며 네임스페이스는 Gyedo를 사용합니다.
+ - 호스트 API를 ConfigureGyedo/StartGyedoAsync/ShutdownGyedoAsync로, XAML 네임스페이스를 https://github.com/dragonfavors/Gyedo로 변경합니다.
+ - 이전 이름의 호환 별칭은 제공하지 않습니다. 아래 과거 변경 이력의 Stylet 표기는 당시 이름입니다.
 
  - Execute의 편의 API를 Run/RunAsync, InvokeAsync, Post, Send로 정리하고 기존 OnUIThread·PostToUIThread 계열 이름을 제거합니다. 실행 시점과 완료 대기 동작은 유지합니다.
  - IDispatcher에 Action·Func<T>·Func<Task>·Func<Task<T>>용 InvokeAsync와 실행 전 취소를 추가합니다.

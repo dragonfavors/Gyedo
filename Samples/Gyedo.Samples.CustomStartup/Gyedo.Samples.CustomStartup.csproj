@@ -1,0 +1,12 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <UseWPF>true</UseWPF>
+    <StartupObject>Gyedo.Samples.CustomStartup.App</StartupObject>
+  </PropertyGroup>
+  <ItemGroup>
+    <ApplicationDefinition Remove="App.xaml" />
+    <Page Include="App.xaml" />
+    <ProjectReference Include="..\..\Gyedo.Wpf\Gyedo.Wpf.csproj" />
+  </ItemGroup>
+</Project>

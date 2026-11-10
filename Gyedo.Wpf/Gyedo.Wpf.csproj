@@ -1,0 +1,49 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Library</OutputType>
+    <TargetFramework>net10.0-windows</TargetFramework>
+    <UseWPF>true</UseWPF>
+
+    <EnableDefaultItems>false</EnableDefaultItems>
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+
+    <VersionPrefix>0.0.0</VersionPrefix>
+    <PackageId>Gyedo.Wpf</PackageId>
+    <RootNamespace>Gyedo</RootNamespace>
+    <PackageTags>WPF;MVVM;ViewModel;Screen Conductor;ViewModel-First;Model-View-ViewModel;UI</PackageTags>
+    <Copyright>Copyright © 2014 Antony Male; © 2026 dragonfavors</Copyright>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
+    <PackageProjectUrl>https://github.com/dragonfavors/Stylet.MvvmToolkit</PackageProjectUrl>
+    <PackageLicenseExpression>MIT</PackageLicenseExpression>
+    <RepositoryType>git</RepositoryType>
+    <RepositoryUrl>https://github.com/dragonfavors/Stylet.MvvmToolkit</RepositoryUrl>
+    <Authors>Antony Male;dragonfavors</Authors>
+    <Description>CommunityToolkit.Mvvm 기반 Gyedo의 WPF 화면 구성·창 관리·비동기 수명주기 구현</Description>
+    
+    <!-- Just embed all sources in the PDB: snupkg files don't support bare .cs files, and SourceLink is annoying -->
+    <!-- 심볼 패키지 생성 여부는 Rakefile에서 지정합니다. -->
+    <SymbolPackageFormat>snupkg</SymbolPackageFormat>
+    <EmbedAllSources>true</EmbedAllSources>
+    <DebugType>portable</DebugType>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.Extensions.Hosting" Version="10.0.14" />
+    <ProjectReference Include="..\Gyedo.Core\Gyedo.Core.csproj" />
+    <Compile Include="**\*.cs" Exclude="obj\**" />
+    <None Remove="**\*.cs" />
+
+    <None Include="..\README.md" Pack="true" PackagePath="\" />
+    <None Include="..\LICENSE.txt" Pack="true" PackagePath="\" />
+
+    <Page Include="MessageBoxView.xaml">
+      <SubType>Designer</SubType>
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
+    <Page Include="Xaml\GyedoResourceDictionary.xaml">
+      <Generator>MSBuild:Compile</Generator>
+      <SubType>Designer</SubType>
+    </Page>
+  </ItemGroup>
+</Project>

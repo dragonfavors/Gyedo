@@ -1,12 +1,12 @@
 CONFIG = ENV['CONFIG'] || 'Debug'
 
-CORE_CSPROJ = 'Stylet.Core/Stylet.Core.csproj'
-CSPROJ = 'Stylet/Stylet.csproj'
-TEMPLATES_CSPROJ = 'StyletTemplates/StyletTemplates.csproj'
-UNIT_TESTS = 'StyletUnitTests/StyletUnitTests.csproj'
-CORE_TESTS = 'Stylet.Core.Tests/Stylet.Core.Tests.csproj'
+CORE_CSPROJ = 'Gyedo.Core/Gyedo.Core.csproj'
+CSPROJ = 'Gyedo.Wpf/Gyedo.Wpf.csproj'
+TEMPLATES_CSPROJ = 'Gyedo.Templates/Gyedo.Templates.csproj'
+UNIT_TESTS = 'Gyedo.Wpf.Tests/Gyedo.Wpf.Tests.csproj'
+CORE_TESTS = 'Gyedo.Core.Tests/Gyedo.Core.Tests.csproj'
 
-TEMPLATES_DIR = 'StyletTemplates/templates'
+TEMPLATES_DIR = 'Gyedo.Templates/templates'
 
 desc "Build the project using the current CONFIG (or Debug)"
 task :build do
@@ -40,7 +40,7 @@ task :version, [:version] do |t, args|
 
   Dir[File.join(TEMPLATES_DIR, '**/*.csproj')].each do |csproj|
     content = IO.read(csproj)
-    content[/<PackageReference Include="Stylet" Version="(.+?)" \/>/, 1] = version
+    content[/<PackageReference Include="Gyedo.Wpf" Version="(.+?)" \/>/, 1] = version
     File.open(csproj, 'w'){ |f| f.write(content) }
   end
 end

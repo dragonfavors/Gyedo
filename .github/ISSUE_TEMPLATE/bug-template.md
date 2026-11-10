@@ -10,7 +10,7 @@ A clear and concise description of what the bug is. Use screenshots as necessary
 Code to reproduce the bug, which someone else can run.
 
 **Version Info**
- - Stylet version: [e.g. 1.2.3]
+ - Gyedo version: [e.g. 1.2.3]
  - Runtime version: [e.g. 5.0.300]
 
 **Additional Info**

@@ -1,0 +1,501 @@
+using Gyedo.Logging;
+using Gyedo.Xaml;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Reflection;
+using System.Runtime.CompilerServices;
+using System.Threading;
+using System.Text.RegularExpressions;
+using System.Windows;
+
+namespace Gyedo;
+
+/// <summary>
+/// Responsible for managing views. Locates the correct view, instantiates it, attaches it to its ViewModel correctly, and handles the View.Model attached property
+/// </summary>
+public interface IViewManager
+{
+    /// <summary>
+    /// IScreenState 또는 IViewAware 모델의 연결된 WPF View를 반환합니다.
+    /// 일반 모델은 여러 View에 표시할 수 있으므로 캐시하지 않고 null을 반환합니다.
+    /// </summary>
+    UIElement GetView(object model);
+
+    /// <summary>
+    /// Called by View whenever its current View.Model changes. Will locate and instantiate the correct view, and set it as the target's Content
+    /// </summary>
+    /// <param name="targetLocation">Thing which View.Model was changed on. Will have its Content set</param>
+    /// <param name="oldValue">Previous value of View.Model</param>
+    /// <param name="newValue">New value of View.Model</param>
+    void OnModelChanged(DependencyObject targetLocation, object oldValue, object newValue);
+
+    /// <summary>
+    /// Given a ViewModel instance, locate its View type (using LocateViewForModel), and instantiates it
+    /// </summary>
+    /// <param name="model">ViewModel to locate and instantiate the View for</param>
+    /// <returns>Instantiated and setup view</returns>
+    UIElement CreateViewForModel(object model);
+
+    /// <summary>
+    /// Given an instance of a ViewModel and an instance of its View, bind the two together
+    /// </summary>
+    /// <param name="view">View to bind to the ViewModel</param>
+    /// <param name="viewModel">ViewModel to bind the View to</param>
+    void BindViewToModel(UIElement view, object viewModel);
+
+    /// <summary>
+    /// Create a View for the given ViewModel, and bind the two together, if the model doesn't already have a view
+    /// </summary>
+    /// <param name="model">ViewModel to create a Veiw for</param>
+    /// <returns>Newly created View, bound to the given ViewModel</returns>
+    UIElement CreateAndBindViewForModelIfNecessary(object model);
+}
+
+/// <summary>
+/// Configuration object consumed by <see cref="ViewManager"/>
+/// </summary>
+public class ViewManagerConfig
+{
+    /// <summary>ViewModel 이름에서 교체할 접미사입니다.</summary>
+    public string ViewModelNameSuffix { get; set; } = "ViewModel";
+
+    /// <summary>View 이름에 사용할 접미사입니다.</summary>
+    public string ViewNameSuffix { get; set; } = "View";
+
+    /// <summary>
+    /// Gets or sets the ViewFactory to use
+    /// </summary>
+    public Func<Type, object> ViewFactory { get; set; }
+
+    /// <summary>
+    /// Gets or sets the Assembles to search for views in
+    /// </summary>
+    public List<Assembly> ViewAssemblies { get; set; }
+}
+
+/// <summary>
+/// Default implementation of ViewManager. Responsible for locating, creating, and setting up Views for View.Model.
+/// </summary>
+public class ViewManager : IViewManager
+{
+    private static readonly ILogger logger = LogManager.GetLogger(typeof(ViewManager));
+    private readonly ConditionalWeakTable<object, ViewBinding> views = new();
+
+    private Func<Type, object> _viewFactory; // This is assigned by the ctor
+
+    /// <summary>
+    /// Gets or sets the delegate used to retrieve an instance of a view
+    /// </summary>
+    public Func<Type, object> ViewFactory
+    {
+        get => this._viewFactory;
+        set => this._viewFactory = value ?? throw new ArgumentNullException(nameof(this.ViewFactory));
+    }
+
+    private List<Assembly> _viewAssemblies; // This is assigned by the ctor
+
+    /// <summary>
+    /// Gets or sets the assemblies which are used for IoC container auto-binding and searching for Views.
+    /// </summary>
+    public List<Assembly> ViewAssemblies
+    {
+        get => this._viewAssemblies;
+        set => this._viewAssemblies = value ?? throw new ArgumentNullException(nameof(this.ViewAssemblies));
+    }
+
+    private Dictionary<string, string> _namespaceTransformations = new();
+
+    /// <summary>
+    /// Gets or sets a set of transformations to be applied to the ViewModel's namespace: string to find -> string to replace it with
+    /// </summary>
+    public Dictionary<string, string> NamespaceTransformations
+    {
+        get => this._namespaceTransformations;
+        set => this._namespaceTransformations = value ?? throw new ArgumentNullException(nameof(this.NamespaceTransformations));
+    }
+
+    private string _viewNameSuffix = "View";
+
+    /// <summary>
+    /// Gets or sets the suffix replacing 'ViewModel' (see <see cref="ViewModelNameSuffix"/>). Defaults to 'View'
+    /// </summary>
+    public string ViewNameSuffix
+    {
+        get => this._viewNameSuffix;
+        set => this._viewNameSuffix = value ?? throw new ArgumentNullException(nameof(this.ViewNameSuffix));
+    }
+
+    private string _viewModelNameSuffix = "ViewModel";
+
+    /// <summary>
+    /// Gets or sets the suffix of ViewModel names, defaults to 'ViewModel'. This will be replaced by <see cref="ViewNameSuffix"/>
+    /// </summary>
+    public string ViewModelNameSuffix
+    {
+        get => this._viewModelNameSuffix;
+        set => this._viewModelNameSuffix = value ?? throw new ArgumentNullException(nameof(this.ViewModelNameSuffix));
+    }
+
+    /// <summary>
+    /// Initialises a new instance of the <see cref="ViewManager"/> class, with the given viewFactory
+    /// </summary>
+    /// <param name="config">Configuration object</param>
+    public ViewManager(ViewManagerConfig config)
+    {
+#pragma warning disable CA2208 // Instantiate argument exceptions correctly
+        // Config.ViewAssemblies cannot be null - ViewManagerConfig ensures this
+        if (config.ViewFactory == null)
+            throw new ArgumentNullException("viewFactory");
+        if (config.ViewAssemblies == null)
+            throw new ArgumentNullException("viewAssemblies");
+#pragma warning restore CA2208 // Instantiate argument exceptions correctly
+
+        this.ViewFactory = config.ViewFactory;
+        this.ViewAssemblies = config.ViewAssemblies;
+        this.ViewModelNameSuffix = config.ViewModelNameSuffix;
+        this.ViewNameSuffix = config.ViewNameSuffix;
+    }
+
+    /// <summary>
+    /// Called by View whenever its current View.Model changes. Will locate and instantiate the correct view, and set it as the target's Content
+    /// </summary>
+    /// <param name="targetLocation">Thing which View.Model was changed on. Will have its Content set</param>
+    /// <param name="oldValue">Previous value of View.Model</param>
+    /// <param name="newValue">New value of View.Model</param>
+    public virtual void OnModelChanged(DependencyObject targetLocation, object oldValue, object newValue)
+    {
+        if (oldValue == newValue)
+            return;
+
+        if (newValue != null)
+        {
+            logger.Info("View.Model changed for {0} from {1} to {2}", targetLocation, oldValue, newValue);
+            UIElement view = this.CreateAndBindViewForModelIfNecessary(newValue);
+            if (view is Window)
+            {
+                var e = new GyedoInvalidViewTypeException(string.Format("g:View.Model=\"...\" tried to show a View of type '{0}', but that View derives from the Window class. " +
+                "Make sure any Views you display using g:View.Model=\"...\" do not derive from Window (use UserControl or similar)", view.GetType().Name));
+                logger.Error(e);
+                throw e;
+            }
+            View.SetContentProperty(targetLocation, view);
+        }
+        else
+        {
+            logger.Info("View.Model cleared for {0}, from {1}", targetLocation, oldValue);
+            View.SetContentProperty(targetLocation, null);
+        }
+    }
+
+    /// <summary>
+    /// Create a View for the given ViewModel, and bind the two together, if the model doesn't already have a view
+    /// </summary>
+    /// <param name="model">ViewModel to create a Veiw for</param>
+    /// <returns>Newly created View, bound to the given ViewModel</returns>
+    public virtual UIElement CreateAndBindViewForModelIfNecessary(object model)
+    {
+        UIElement view = this.GetView(model);
+        if (view != null)
+        {
+            logger.Info("ViewModel {0} already has a View attached to it. Not attaching another", model);
+            return view;
+        }
+
+        return this.CreateAndBindViewForModel(model);
+    }
+
+    /// <inheritdoc/>
+    public virtual UIElement GetView(object model)
+    {
+        if (model == null)
+            return null;
+
+        return this.views.TryGetValue(model, out ViewBinding binding)
+            ? binding.View
+            : (model as IViewAware)?.View;
+    }
+
+    /// <summary>
+    /// Create a View for the given ViewModel, and bind the two together
+    /// </summary>
+    /// <param name="model">ViewModel to create a Veiw for</param>
+    /// <returns>Newly created View, bound to the given ViewModel</returns>
+    protected virtual UIElement CreateAndBindViewForModel(object model)
+    {
+        logger.Info("Instantiating and binding a new View to ViewModel {0}", model);
+        UIElement view = this.CreateViewForModel(model);
+        this.BindViewToModel(view, model);
+        return view;
+    }
+
+    /// <summary>
+    /// Given the expected name for a view, locate its type (or return null if a suitable type couldn't be found)
+    /// </summary>
+    /// <param name="viewName">View name to locate the type for</param>
+    /// <param name="extraAssemblies">Extra assemblies to search through</param>
+    /// <returns>Type for that view name</returns>
+    protected virtual Type ViewTypeForViewName(string viewName, IEnumerable<Assembly> extraAssemblies)
+    {
+        return this.ViewAssemblies.Concat(extraAssemblies).Select(x => x.GetType(viewName)).FirstOrDefault(x => x != null);
+    }
+
+    /// <summary>
+    /// Given the full name of a ViewModel type, determine the corresponding View type nasme
+    /// </summary>
+    /// <remarks>
+    /// This is used internally by LocateViewForModel. If you override LocateViewForModel, you
+    /// can simply ignore this method.
+    /// </remarks>
+    /// <param name="modelTypeName">ViewModel type name to get the View type name for</param>
+    /// <returns>View type name</returns>
+    protected virtual string ViewTypeNameForModelTypeName(string modelTypeName)
+    {
+        string transformed = modelTypeName;
+
+        foreach (KeyValuePair<string, string> transformation in this.NamespaceTransformations)
+        {
+            if (transformed.StartsWith(transformation.Key + "."))
+            {
+                transformed = transformation.Value + transformed.Substring(transformation.Key.Length);
+                break;
+            }
+        }
+
+        transformed = Regex.Replace(transformed,
+            string.Format(@"(?<=.){0}(?=s?\.)|{0}$", Regex.Escape(this.ViewModelNameSuffix)),
+            Regex.Escape(this.ViewNameSuffix));
+
+        return transformed;
+    }
+
+    /// <summary>
+    /// Given the type of a model, locate the type of its View (or throw an exception)
+    /// </summary>
+    /// <param name="modelType">Model to find the view for</param>
+    /// <returns>Type of the ViewModel's View</returns>
+    protected virtual Type LocateViewForModel(Type modelType)
+    {
+        string modelName = modelType.FullName;
+        string viewName = this.ViewTypeNameForModelTypeName(modelName);
+        if (modelName == viewName)
+            throw new GyedoViewLocationException(string.Format("Unable to transform ViewModel name {0} into a suitable View name", modelName), viewName);
+
+        // Also include the ViewModel's assembly, to be helpful
+        Type viewType = this.ViewTypeForViewName(viewName, new[] { modelType.Assembly });
+        if (viewType == null)
+        {
+            var e = new GyedoViewLocationException(string.Format("Unable to find a View with type {0}", viewName), viewName);
+            logger.Error(e);
+            throw e;
+        }
+        else
+        {
+            logger.Info("Searching for a View with name {0}, and found {1}", viewName, viewType);
+        }
+
+        return viewType;
+    }
+
+    /// <summary>
+    /// Given a ViewModel instance, locate its View type (using LocateViewForModel), and instantiates it
+    /// </summary>
+    /// <param name="model">ViewModel to locate and instantiate the View for</param>
+    /// <returns>Instantiated and setup view</returns>
+    public virtual UIElement CreateViewForModel(object model)
+    {
+        Type viewType = this.LocateViewForModel(model.GetType());
+
+        if (viewType.IsAbstract || !typeof(UIElement).IsAssignableFrom(viewType))
+        {
+            var e = new GyedoViewLocationException(string.Format("Found type for view: {0}, but it wasn't a class derived from UIElement", viewType.Name), viewType.Name);
+            logger.Error(e);
+            throw e;
+        }
+
+        var view = (UIElement)this.ViewFactory(viewType);
+
+        this.InitializeView(view, viewType);
+
+        return view;
+    }
+
+    /// <summary>
+    /// Given a view, take steps to initialize it (for example calling InitializeComponent)
+    /// </summary>
+    /// <param name="view">View to initialize</param>
+    /// <param name="viewType">Type of view, passed for efficiency reasons</param>
+    public virtual void InitializeView(UIElement view, Type viewType)
+    {
+        // If it doesn't have a code-behind, this won't be called
+        // We have to use this reflection here, since the InitializeComponent is a method on the View, not on any of its base classes
+        MethodInfo initializer = viewType.GetMethod("InitializeComponent", BindingFlags.Public | BindingFlags.Instance);
+        if (initializer != null)
+            initializer.Invoke(view, null);
+    }
+
+    /// <summary>
+    /// Given an instance of a ViewModel and an instance of its View, bind the two together
+    /// </summary>
+    /// <param name="view">View to bind to the ViewModel</param>
+    /// <param name="viewModel">ViewModel to bind the View to</param>
+    public virtual void BindViewToModel(UIElement view, object viewModel)
+    {
+        ArgumentNullException.ThrowIfNull(view);
+        ArgumentNullException.ThrowIfNull(viewModel);
+
+        UIElement existingView = this.GetView(viewModel);
+        if (existingView != null && !ReferenceEquals(existingView, view))
+            throw new InvalidOperationException("ViewModel에 이미 다른 View가 연결되어 있습니다.");
+
+        if (this.views.TryGetValue(viewModel, out _))
+            return;
+
+        if (view is FrameworkElement viewAsFrameworkElement)
+        {
+            logger.Info("Setting {0}'s DataContext to {1}", view, viewModel);
+            viewAsFrameworkElement.DataContext = viewModel;
+        }
+
+        if (viewModel is IViewAware viewModelAsViewAware && existingView == null)
+        {
+            logger.Info("Setting {0}'s View to {1}", viewModel, view);
+            viewModelAsViewAware.AttachView(view);
+        }
+
+        bool cacheView = viewModel is IScreenState or IViewAware;
+        if (!cacheView && viewModel is not IViewLifecycleAware)
+            return;
+
+        // 일반 모델의 로딩 알림은 각 View가 보유합니다. 모델별 View 캐시는 만들지 않습니다.
+        var binding = new ViewBinding(this, viewModel, view);
+        if (cacheView)
+            this.views.Add(viewModel, binding);
+        try
+        {
+            binding.Attach();
+        }
+        catch
+        {
+            binding.Release();
+            throw;
+        }
+    }
+
+    // View와 이벤트 연결은 UI 어댑터가 관리합니다. 코어에는 WPF 객체를 전달하지 않습니다.
+    private sealed class ViewBinding
+    {
+        private readonly ViewManager owner;
+        private readonly WeakReference<object> model;
+        private int released;
+
+        public UIElement View { get; }
+
+        public ViewBinding(ViewManager owner, object model, UIElement view)
+        {
+            this.owner = owner;
+            this.model = new WeakReference<object>(model);
+            this.View = view;
+        }
+
+        public void Attach()
+        {
+            if (!this.model.TryGetTarget(out object target))
+                return;
+
+            if (target is IViewLifecycleAware lifecycle)
+                lifecycle.ViewReleaseRequested += this.OnViewReleaseRequested;
+            else if (target is IScreenState screen)
+                screen.Closed += this.OnScreenClosed;
+            if (this.View is Window window)
+                window.Closed += this.OnWindowClosed;
+            if (target is IViewLifecycleAware && this.View is FrameworkElement element)
+            {
+                element.Loaded += this.OnLoaded;
+                if (element.IsLoaded)
+                    this.OnLoaded(element, new RoutedEventArgs(FrameworkElement.LoadedEvent));
+            }
+        }
+
+        private async void OnLoaded(object sender, RoutedEventArgs e)
+        {
+            if (Volatile.Read(ref this.released) == 0 && this.model.TryGetTarget(out object target) && target is IViewLifecycleAware lifecycle)
+            {
+                try { await lifecycle.ViewLoadedAsync(); }
+                catch (Exception exception) { logger.Error(exception, "View loading failed"); }
+            }
+        }
+
+        private void OnViewReleaseRequested(object sender, EventArgs e) => this.Release();
+
+        private void OnScreenClosed(object sender, CloseEventArgs e) => this.Release();
+
+        private void OnWindowClosed(object sender, EventArgs e) => this.Release();
+
+        public void Release()
+        {
+            if (Interlocked.Exchange(ref this.released, 1) != 0)
+                return;
+
+            if (this.model.TryGetTarget(out object target))
+            {
+                if (target is IViewLifecycleAware lifecycle)
+                    lifecycle.ViewReleaseRequested -= this.OnViewReleaseRequested;
+                else if (target is IScreenState screen)
+                    screen.Closed -= this.OnScreenClosed;
+                if (this.owner.views.TryGetValue(target, out ViewBinding current) && ReferenceEquals(current, this))
+                    this.owner.views.Remove(target);
+            }
+
+            // 코어의 종료를 UI 스레드 대기로 막지 않습니다. 지연된 Loaded는 released로 차단합니다.
+            if (this.View.Dispatcher.CheckAccess())
+                this.DetachViewEvents();
+            else
+                this.View.Dispatcher.BeginInvoke(new Action(this.DetachViewEvents));
+        }
+
+        private void DetachViewEvents()
+        {
+            if (this.View is FrameworkElement element)
+                element.Loaded -= this.OnLoaded;
+            if (this.View is Window window)
+                window.Closed -= this.OnWindowClosed;
+        }
+    }
+}
+
+/// <summary>
+/// Exception raised while attempting to locate a View for a ViewModel
+/// </summary>
+public class GyedoViewLocationException : Exception
+{
+    /// <summary>
+    /// Name of the View in question
+    /// </summary>
+    public readonly string ViewTypeName;
+
+    /// <summary>
+    /// Initialises a new instance of the <see cref="GyedoViewLocationException"/> class
+    /// </summary>
+    /// <param name="message">Message associated with the Exception</param>
+    /// <param name="viewTypeName">Name of the View this question was thrown for</param>
+    public GyedoViewLocationException(string message, string viewTypeName)
+        : base(message)
+    {
+        this.ViewTypeName = viewTypeName;
+    }
+}
+
+/// <summary>
+/// Exception raise when the located View is of the wrong type (Window when expected UserControl, etc)
+/// </summary>
+public class GyedoInvalidViewTypeException : Exception
+{
+    /// <summary>
+    /// Initialises a new instance of the <see cref="GyedoInvalidViewTypeException"/> class
+    /// </summary>
+    /// <param name="message">Message associated with the Exception</param>
+    public GyedoInvalidViewTypeException(string message)
+        : base(message)
+    { }
+}

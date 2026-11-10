@@ -1,0 +1,12 @@
+﻿<Window x:Class="Gyedo.Samples.RedditBrowser.Pages.ShellView"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:g="https://github.com/dragonfavors/Gyedo"
+        Title="ShellView" Height="500" Width="500">
+    <DockPanel>
+        <GroupBox DockPanel.Dock="Top" Header="Navigate to">
+            <ContentControl g:View.Model="{Binding Taskbar}"/>
+        </GroupBox>
+        <TabControl Style="{StaticResource GyedoConductorTabControl}"/>
+    </DockPanel>
+</Window>
