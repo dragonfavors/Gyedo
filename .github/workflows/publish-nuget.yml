@@ -1,0 +1,105 @@
+name: Publish to NuGet
+
+on:
+  release:
+    types: [published]
+
+permissions:
+  contents: read
+
+jobs:
+  package:
+    runs-on: windows-latest
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+
+      - name: Read release version
+        id: version
+        shell: pwsh
+        env:
+          RELEASE_TAG: ${{ github.event.release.tag_name }}
+        run: |
+          if ($env:RELEASE_TAG -cnotmatch '^v(?<version>(?:0|[1-9][0-9]*)\.(?:0|[1-9][0-9]*)\.(?:0|[1-9][0-9]*)(?:-[0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*)?)$') {
+            throw 'Expected a release tag such as v1.0.0 or v0.1.0-preview.1.'
+          }
+          "version=$($Matches.version)" >> $env:GITHUB_OUTPUT
+
+      - name: Run Core and WPF tests
+        run: dotnet test Gyedo.sln -c Release -m:1
+
+      - name: Build release packages
+        shell: pwsh
+        env:
+          RELEASE_VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          $template = Get-Item 'Gyedo.Templates/templates/GyedoApplication-CSharp/Company.GyedoApplication1.csproj'
+          [xml]$project = Get-Content $template -Raw
+          $reference = $project.SelectSingleNode('//PackageReference[@Include="Gyedo.Wpf"]')
+          $reference.SetAttribute('Version', $env:RELEASE_VERSION)
+          $project.Save($template.FullName)
+          foreach ($id in 'Gyedo.Core', 'Gyedo.Wpf', 'Gyedo.Templates') {
+            dotnet pack "$id/$id.csproj" -c Release "-p:Version=$env:RELEASE_VERSION" -o artifacts
+            if ($LASTEXITCODE) { exit $LASTEXITCODE }
+          }
+
+      - name: Build an app from the packaged template
+        shell: pwsh
+        env:
+          RELEASE_VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          $feed = (Resolve-Path artifacts).Path
+          $app = Join-Path $env:RUNNER_TEMP 'GyedoSmoke'
+          dotnet new install "$feed/Gyedo.Templates.$env:RELEASE_VERSION.nupkg"
+          if ($LASTEXITCODE) { exit $LASTEXITCODE }
+          dotnet new gyedo -n GyedoSmoke -o $app
+          if ($LASTEXITCODE) { exit $LASTEXITCODE }
+          # The clean runner has restored the external dependencies during the test build.
+          dotnet restore "$app/GyedoSmoke.csproj" --source $feed
+          if ($LASTEXITCODE) { exit $LASTEXITCODE }
+          $assets = Get-Content "$app/obj/project.assets.json" -Raw | ConvertFrom-Json -AsHashtable
+          foreach ($id in 'Gyedo.Core', 'Gyedo.Wpf') {
+            if (-not $assets.libraries.Contains("$id/$env:RELEASE_VERSION")) { throw "Unexpected $id version" }
+          }
+          dotnet build "$app/GyedoSmoke.csproj" -c Release --no-restore
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: nuget-packages
+          path: artifacts/*.nupkg
+          if-no-files-found: error
+
+  publish:
+    needs: package
+    runs-on: ubuntu-latest
+    environment: nuget
+    permissions:
+      id-token: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: nuget-packages
+          path: artifacts
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+      - uses: NuGet/login@v1
+        id: login
+        with:
+          user: ${{ secrets.NUGET_USER }}
+      - name: Push release packages
+        shell: bash
+        env:
+          PACKAGE_VERSION: ${{ needs.package.outputs.version }}
+          NUGET_API_KEY: ${{ steps.login.outputs.NUGET_API_KEY }}
+        run: |
+          for id in Gyedo.Core Gyedo.Wpf Gyedo.Templates; do
+            dotnet nuget push "artifacts/$id.$PACKAGE_VERSION.nupkg" \
+              --source https://api.nuget.org/v3/index.json --api-key "$NUGET_API_KEY" --skip-duplicate
+          done
