@@ -95,6 +95,18 @@ public class WpfUiFlowTests
     }
     private static Task Wait(Task task) => task.WaitAsync(Limit);
     private static Task FlushUiAsync() => Dispatcher.CurrentDispatcher.InvokeAsync(() => { }, DispatcherPriority.ApplicationIdle).Task.WaitAsync(Limit);
+    private static async Task WaitForEnabledAsync(UIElement element)
+    {
+        if (element.IsEnabled) return;
+        var enabled = NewSignal();
+        void OnChanged(object sender, DependencyPropertyChangedEventArgs e)
+        {
+            if ((bool)e.NewValue) enabled.TrySetResult();
+        }
+        element.IsEnabledChanged += OnChanged;
+        try { await Wait(enabled.Task); }
+        finally { element.IsEnabledChanged -= OnChanged; }
+    }
     private static void Click(Button button) => ((IInvokeProvider)new ButtonAutomationPeer(button).GetPattern(PatternInterface.Invoke)).Invoke();
 
     // 모달 창을 표시한 테스트가 실패해도 테스트 Task 완료 전에 모달 루프를 끝냅니다.
@@ -262,7 +274,7 @@ public class WpfUiFlowTests
         Assert.That(model.ActiveItem, Is.SameAs(first));
         if (fail) loading.SetException(new InvalidOperationException("load failed"));
         else loading.SetResult();
-        await FlushUiAsync();
+        await WaitForEnabledAsync(view.Tabs);
         Assert.That(view.Tabs.IsEnabled, Is.True);
         Assert.That(model.ActiveItem, Is.SameAs(fail ? first : second));
         Assert.That(view.Tabs.SelectedItem, Is.SameAs(model.ActiveItem));
@@ -274,7 +286,7 @@ public class WpfUiFlowTests
             await FlushUiAsync();
             Assert.That(((FlowPageView)this.views.GetView(second)).Text.Text, Is.EqualTo("always"));
             view.Tabs.SetCurrentValue(Selector.SelectedItemProperty, first);
-            await FlushUiAsync();
+            await WaitForEnabledAsync(view.Tabs);
         }
         Assert.That(this.views.GetView(first), Is.SameAs(firstView));
         Assert.That(first.InitialCount, Is.EqualTo(1));
